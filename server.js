@@ -557,7 +557,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
           const possibleFolders = [
               `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
               `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
-              `students/9/A/`, `students/9/B/`, `students/9/C/`, `students/9/D/`,
+              `students/9/A/`, `students/9/B/`, `stusdents/9/C/`, `students/9/D/`,
               `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
           ];
 
@@ -996,20 +996,11 @@ app.post('/api/getViolationsSummary', async (req, res) => {
   }
 });
 
-
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
-
-
 // Middleware to handle redirects from '/' to '/entrance'
-app.use((req, res, next) => {
-  if (req.path === '/') {
-    res.redirect('/entrance');
-  } else {
-    next();
-  }
+app.get('/', (req, res) => {
+  res.redirect('/entrance');
 });
+
 
 (async () => {
     try {
@@ -1027,32 +1018,33 @@ app.use((req, res, next) => {
     }
 })();
 
-
-// Define routes to serve HTML files
-const routes = {
-  '/settings': '../Admin/settings.html',
-  '/dashboard': '../Admin/dashboard.html',
-  '/notice': '../Admin/notice.html',
-  '/manualviolation': '../Admin/manualviolation.html',
-  '/UserCreate': '../Admin/UserCreate.html',
-  '/studentsearch': '../Admin/studentsearch.html',
-  '/searchdate': '../Admin/searchdate.html',
-  '/usernotice': '../Admin/usernotice.html',
-  '/active': '../Admin/active.html',
-  '/login': '../Admin/AdminUser/login.html',
-  '/home': 'index.html',
-};
-
-
-Object.entries(routes).forEach(([route, filePath]) => {
+Object.entries(routes).forEach(([route, file]) => {
   app.get(route, (req, res) => {
-    res.sendFile(path.join(__dirname, filePath));
+    res.sendFile(path.join(__dirname, 'admin', file));
   });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+// Define explicit routes for admin pages
+const routes = {
+  '/admin/settings': 'settings.html',
+  '/admin/dashboard': 'dashboard.html',
+  '/admin/notice': 'notice.html',
+  '/admin/manualviolation': 'manualviolation.html',
+  '/admin/UserCreate': 'UserCreate.html',
+  '/admin/studentsearch': 'studentsearch.html',
+  '/admin/searchdate': 'searchdate.html',
+  '/admin/usernotice': 'usernotice.html',
+  '/admin/active': 'active.html',
+  '/admin/login': 'AdminUser/login.html',
+  '/home': '../public/index.html',
+};
 
 
 // Error handling middleware
