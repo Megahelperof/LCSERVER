@@ -12,7 +12,6 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 const app = express();
 // const app = express(); // Duplicate declaration removed
-app.use(express.static('public'));
 app.use(express.json()); // Parse JSON request bodies
 app.use(cors()); // Enable CORS for all routes
 app.options('*', cors()); // Handle preflight requests
