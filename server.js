@@ -10,8 +10,10 @@ const PORT = process.env.PORT || 3000;
 
 
 // ✅ Serve static files for `/public` and `/admin`
-app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 // ✅ Define explicit routes for admin pages **BEFORE** static file handling
 const routes = {
@@ -1012,10 +1014,10 @@ app.post('/api/getViolationsSummary', async (req, res) => {
   }
 });
 
-// Middleware to handle redirects from '/' to '/entrance'
 app.get('/', (req, res) => {
   res.redirect('/entrance');
 });
+
 
 
 (async () => {
@@ -1044,6 +1046,10 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+app.use((req, res, next) => {
+  console.log(`Requested URL: ${req.url}`);
+  next();
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
