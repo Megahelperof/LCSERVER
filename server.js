@@ -540,43 +540,56 @@ async function writeStudentData(data) {
 }
 
 app.post('/api/getStudentInfo', async (req, res) => {
-    try {
-        const { studentNumber } = req.body;
+  try {
+      const { query } = req.body; // Can be studentNumber or fullName
 
-        // Fetch student data from Firestore
-        const studentDoc = await admin.firestore().collection('students').doc(studentNumber).get();
+      let studentDoc = null;
 
-        if (!studentDoc.exists) {
-            return res.json({ success: false, message: 'Student not found' });
-        }
+      if (!isNaN(query)) {
+          // If the input is a number, search by studentNumber
+          studentDoc = await db.collection('students').doc(query).get();
+      } else {
+          // If the input is a string, search by fullName
+          const studentsRef = db.collection('students');
+          const snapshot = await studentsRef.where('fullName', '==', query).get();
+          if (!snapshot.empty) {
+              studentDoc = snapshot.docs[0]; // Take the first matching document
+          }
+      }
 
-        const studentData = studentDoc.data();
+      if (!studentDoc || !studentDoc.exists) {
+          return res.json({ success: false, message: 'Student not found' });
+      }
 
-        // Fetch violations from Storage
-        const filePath = `students/${studentNumber}/${studentNumber}violations.txt`;
-        const [fileExists] = await bucket.file(filePath).exists();
+      const studentData = studentDoc.data();
+      const studentNumber = studentData.studentNumber;
 
-        let lastViolations = 'None';
-        if (fileExists) {
-            const [content] = await bucket.file(filePath).download();
-            const violations = content.toString('utf-8').split('\n').filter(Boolean);
-            lastViolations = violations[violations.length - 1] || 'None';
-        }
+      // Fetch violations from Storage
+      const filePath = `students/${studentNumber}/${studentNumber}violations.txt`;
+      const [fileExists] = await bucket.file(filePath).exists();
 
-        res.json({
-            success: true,
-            studentInfo: {
-                studentNumber,
-                fullName: studentData.fullName,
-                lastViolations,
-                details: studentData.notice || 'No additional details'
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching student data:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
+      let lastViolations = 'None';
+      if (fileExists) {
+          const [content] = await bucket.file(filePath).download();
+          const violations = content.toString('utf-8').split('\n').filter(Boolean);
+          lastViolations = violations[violations.length - 1] || 'None';
+      }
+
+      res.json({
+          success: true,
+          studentInfo: {
+              studentNumber,
+              fullName: studentData.fullName,
+              lastViolations,
+              details: studentData.notice || 'No additional details'
+          }
+      });
+  } catch (error) {
+      console.error('Error fetching student data:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
+
 
 // Assuming Firebase Admin SDK is already initialized
 
