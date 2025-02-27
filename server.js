@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
-app.use(express.static(path.join(__dirname, 'public')));
+
 
 
 // ✅ Define explicit routes for admin pages **BEFORE** static file handling
