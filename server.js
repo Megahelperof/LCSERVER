@@ -1018,6 +1018,38 @@ app.get('/', (req, res) => {
   res.redirect('/entrance');
 });
 
+async function authenticateAdmin(req, res, next) {
+  try {
+    const authToken = req.headers.authorization?.split('Bearer ')[1]; // Extract token
+
+    if (!authToken) {
+      return res.status(401).json({ success: false, message: "Unauthorized: No token provided" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(authToken);
+    const studentNumber = decodedToken.uid; // Assuming UID is the student number
+
+    // 🔍 Fetch role from Firestore
+    const adminRef = db.collection('Admin').doc('AdminUser').collection(studentNumber).doc('info');
+    const adminDoc = await adminRef.get();
+
+    if (!adminDoc.exists) {
+      return res.status(403).json({ success: false, message: "Forbidden: No access" });
+    }
+
+    const role = adminDoc.data().role;
+
+    if (role === 4) {
+      return res.status(403).json({ success: false, message: "Forbidden: No access" });
+    }
+
+    req.user = { ...decodedToken, role }; // Attach role to request
+    next();
+  } catch (error) {
+    console.error("Authentication Error:", error);
+    return res.status(403).json({ success: false, message: "Invalid or expired token" });
+  }
+}
 
 
 (async () => {
@@ -1037,10 +1069,11 @@ app.get('/', (req, res) => {
 })();
 
 Object.entries(routes).forEach(([route, file]) => {
-  app.get(route, (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin', file));
+  app.get(route, authenticateAdmin, (req, res) => { // 🔒 Protect route
+      res.sendFile(path.join(__dirname, 'admin', file));
   });
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
