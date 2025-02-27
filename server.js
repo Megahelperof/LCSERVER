@@ -502,7 +502,7 @@ app.get('/search', async (req, res) => {
   }
 });
 
-app.post('/api/123/', async (req, res) => {
+app.post('/api/validate-token', async (req, res) => {
   const { token } = req.body;
 
   if (!token || token.length !== 4) {
