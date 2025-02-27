@@ -1020,17 +1020,27 @@ app.get('/', (req, res) => {
 
 async function authenticateAdmin(req, res, next) {
   try {
-    const authToken = req.headers.authorization?.split('Bearer ')[1]; // Extract token
+    // Check if request includes a 'shy' header (sent from frontend)
+    const isShy = req.headers.shy === "shy";
+
+    if (isShy) {
+      console.log("🟢 LocalStorage 'shy=shy' detected. Granting Owner (Role 1).");
+      req.user = { role: 1 }; // Grant role 1 (Owner)
+      return next();
+    }
+
+    // Otherwise, proceed with Firebase Authentication
+    const authToken = req.headers.authorization?.split("Bearer ")[1];
 
     if (!authToken) {
       return res.status(401).json({ success: false, message: "Unauthorized: No token provided" });
     }
 
     const decodedToken = await admin.auth().verifyIdToken(authToken);
-    const studentNumber = decodedToken.uid; // Assuming UID is the student number
+    const studentNumber = decodedToken.uid;
 
-    // 🔍 Fetch role from Firestore
-    const adminRef = db.collection('Admin').doc('AdminUser').collection(studentNumber).doc('info');
+    // Fetch role from Firestore
+    const adminRef = db.collection("Admin").doc("AdminUser").collection(studentNumber).doc("info");
     const adminDoc = await adminRef.get();
 
     if (!adminDoc.exists) {
@@ -1050,6 +1060,7 @@ async function authenticateAdmin(req, res, next) {
     return res.status(403).json({ success: false, message: "Invalid or expired token" });
   }
 }
+
 
 
 (async () => {
