@@ -29,7 +29,7 @@ app.post('/api/data', (req, res) => {
 
 // Firebase Admin SDK initialization
 try {
-  const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: "lcccdb-891ca.appspot.com"
@@ -1003,10 +1003,11 @@ Object.entries(routes).forEach(([route, filePath]) => {
   });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
