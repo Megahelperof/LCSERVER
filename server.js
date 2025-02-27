@@ -9,6 +9,23 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 
 
+// ✅ Serve static files for `/public` and `/admin`
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+// ✅ Define explicit routes for admin pages **BEFORE** static file handling
+const routes = {
+  '/admin/settings': 'settings.html',
+  '/admin/dashboard': 'dashboard.html',
+  '/admin/notice': 'notice.html',
+  '/admin/manualviolation': 'manualviolation.html',
+  '/admin/UserCreate': 'UserCreate.html',
+  '/admin/studentsearch': 'studentsearch.html',
+  '/admin/searchdate': 'searchdate.html',
+  '/admin/usernotice': 'usernotice.html',
+  '/admin/active': 'active.html',
+  '/admin/login': 'AdminUser/login.html',
+};
 // Middleware
 const app = express();
 // const app = express(); // Duplicate declaration removed
@@ -1026,24 +1043,6 @@ Object.entries(routes).forEach(([route, file]) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
-
-// Define explicit routes for admin pages
-const routes = {
-  '/admin/settings': 'settings.html',
-  '/admin/dashboard': 'dashboard.html',
-  '/admin/notice': 'notice.html',
-  '/admin/manualviolation': 'manualviolation.html',
-  '/admin/UserCreate': 'UserCreate.html',
-  '/admin/studentsearch': 'studentsearch.html',
-  '/admin/searchdate': 'searchdate.html',
-  '/admin/usernotice': 'usernotice.html',
-  '/admin/active': 'active.html',
-  '/admin/login': 'AdminUser/login.html',
-  '/home': '../public/index.html',
-};
 
 
 // Error handling middleware
