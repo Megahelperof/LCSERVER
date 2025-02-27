@@ -7,7 +7,7 @@ const { parse } = require('date-fns');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
-
+const app = express();
 
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,7 +29,7 @@ const routes = {
   '/admin/login': 'AdminUser/login.html',
 };
 // Middleware
-const app = express();
+
 // const app = express(); // Duplicate declaration removed
 app.use(express.json()); // Parse JSON request bodies
 app.use(cors({
@@ -37,12 +37,7 @@ app.use(cors({
   methods: 'GET,POST,PUT,DELETE,OPTIONS',
   allowedHeaders: 'Content-Type, Authorization'
 }));
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5000'); // Allow frontend
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-});
+
 
 app.options('*', cors()); // Handle preflight requests
 
