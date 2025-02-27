@@ -1023,11 +1023,10 @@ Object.entries(routes).forEach(([route, filePath]) => {
   });
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
