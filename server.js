@@ -6,7 +6,8 @@ const path = require('path');
 const { parse } = require('date-fns');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
 
 // Middleware
 const app = express();
@@ -46,7 +47,7 @@ try {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || "",
     universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
   };
-  
+
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: "lcccdb-891ca.appspot.com",
