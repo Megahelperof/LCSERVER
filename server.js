@@ -385,7 +385,7 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
 }
 
 // New endpoint to set late times
-app.post('/setLateTimes', (req, res) => {
+app.post('/api/setLateTimes', (req, res) => {
   const { newStartTime, newLateTime } = req.body;
 
   if (!newStartTime || !newLateTime) {
@@ -409,7 +409,7 @@ app.post('/setLateTimes', (req, res) => {
   });
 });
 
-app.post('/logActivity', async (req, res) => {
+app.post('/api/logActivity', async (req, res) => {
   const { studentNumber } = req.body;
 
   if (!studentNumber) {
@@ -442,7 +442,7 @@ app.post('/logActivity', async (req, res) => {
   }
 });
 
-app.post('/logEntrance', async (req, res) => {
+app.post('/api/logEntrance', async (req, res) => {
   const { studentNumber, violations } = req.body;
 
   if (!studentNumber) {
@@ -479,7 +479,7 @@ app.post('/logEntrance', async (req, res) => {
     });
   }
 });
-app.get('/search', async (req, res) => {
+app.get('/api/search', async (req, res) => {
   const studentNumber = req.query.studentNumber;
 
   if (!studentNumber) {
@@ -681,7 +681,7 @@ app.delete('/admin/removeNotice/:fileName', async (req, res) => {
 });
 
 
-app.post('/validateMainBarcode', (req, res) => {
+app.post('/api/validateMainBarcode', (req, res) => {
   const { studentNumber } = req.body;
 
   if (studentNumber && typeof studentNumber === 'string') {
@@ -691,7 +691,7 @@ app.post('/validateMainBarcode', (req, res) => {
   }
 });
 
-app.post('/logViolation', async (req, res) => {
+app.post('/api/logViolation', async (req, res) => {
     try {
         const { studentNumber, violations, date, manualEntry } = req.body;
 
@@ -750,7 +750,7 @@ app.post('/logViolation', async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
-app.post('/logMultipleViolations', async (req, res) => {
+app.post('/api/logMultipleViolations', async (req, res) => {
     try {
         const { studentNumber, violations, date, manualEntry } = req.body;
 
@@ -798,7 +798,7 @@ app.post('/logMultipleViolations', async (req, res) => {
     }
 });
 
-app.post('/createStudentFolder', async (req, res) => {
+app.post('/api/createStudentFolder', async (req, res) => {
   const { studentNumber, fullName, grade, section } = req.body;
 
   if (!studentNumber || !fullName || !grade || !section) {
@@ -834,7 +834,7 @@ app.post('/createStudentFolder', async (req, res) => {
 });
 
 
-app.post('/getStudentRecords', async (req, res) => {
+app.post('/api/getStudentRecords', async (req, res) => {
   const { studentNumber, date } = req.body;
 
   if (!studentNumber || !date) {
@@ -895,7 +895,7 @@ app.post('/getStudentRecords', async (req, res) => {
 });
 
 
-app.post('/getViolationsSummary', async (req, res) => {
+app.post('/api/getViolationsSummary', async (req, res) => {
   const { studentNumber } = req.body;
 
   if (!studentNumber) {
@@ -932,7 +932,7 @@ app.post('/getViolationsSummary', async (req, res) => {
     console.error('Error fetching violations summary:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
-});app.post('/logClientConsole', (req, res) => {
+});app.post('/api/logClientConsole', (req, res) => {
   const { log } = req.body;
 
   if (log) {
