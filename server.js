@@ -512,32 +512,10 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
   const studentDoc = await studentDocRef.get();
 
   if (!studentDoc.exists) {
-    return res.json({ success: false, message: `Student ${studentNumber} not found in Firestore` });
+      return res.json({ success: false, message: `Student ${studentNumber} not found in Firestore` });
   }
 
   res.json({ success: true, data: studentDoc.data() });
-});
-app.get('/api/search', async (req, res) => {
-  const studentNumber = req.query.studentNumber;
-
-  if (!studentNumber) {
-    return res.status(400).json({ error: 'Student number is required' });
-  }
-
-  try {
-    const studentDocRef = db.collection('students').doc(studentNumber);
-    const studentDoc = await studentDocRef.get();
-
-    if (studentDoc.exists) {
-      const studentData = studentDoc.data();
-      res.json({ fullName: studentData.fullName });
-    } else {
-      res.json({ error: 'Student not found' });
-    }
-  } catch (error) {
-    console.error('Error fetching student data:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
 });
 
 app.post('/api/validate-token', async (req, res) => {
