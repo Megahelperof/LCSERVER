@@ -990,33 +990,6 @@ const routes = {
   '/home': 'index.html',
 };
 
-app.get('/Admin/dashboard', async (req, res) => {
-  const authToken = req.cookies.authToken;
-
-  if (!authToken) {
-      return res.redirect('/login.html');  // Redirect to login page if no token
-  }
-
-  try {
-      // Verify the ID token sent in the cookie
-      const decodedToken = await admin.auth().verifyIdToken(authToken);
-      const uid = decodedToken.uid;
-
-      // Check if the user is authorized (optional additional checks)
-      const userRecord = await admin.auth().getUser(uid);
-      if (userRecord) {
-          // Serve the dashboard HTML file
-          res.sendFile(path.join(__dirname, 'admin/dashboard.html'));
-      } else {
-          res.redirect('/login.html');
-      }
-  } catch (error) {
-      console.error('Error verifying token:', error);
-      res.redirect('/login.html');  // If token verification fails, redirect to login
-  }
-});
-
-
 Object.entries(routes).forEach(([route, filePath]) => {
   app.get(route, (req, res) => {
     res.sendFile(path.join(__dirname, filePath));
