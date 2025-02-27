@@ -544,16 +544,56 @@ app.post('/api/getStudentInfo', async (req, res) => {
       const { query } = req.body; // Can be studentNumber or fullName
 
       let studentDoc = null;
+      let studentNumber = null;
 
       if (!isNaN(query)) {
-          // If the input is a number, search by studentNumber
+          // If the input is a number, search by studentNumber in Firestore
           studentDoc = await db.collection('students').doc(query).get();
+          if (studentDoc.exists) {
+              studentNumber = query;
+          }
       } else {
-          // If the input is a string, search by fullName
-          const studentsRef = db.collection('students');
-          const snapshot = await studentsRef.where('fullName', '==', query).get();
-          if (!snapshot.empty) {
-              studentDoc = snapshot.docs[0]; // Take the first matching document
+          // If the input is a string (fullName), search inside main.txt files in all possible folders
+          const possibleFolders = [
+              `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
+              `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
+              `students/9/A/`, `students/9/B/`, `students/9/C/`, `students/9/D/`,
+              `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
+          ];
+
+          for (const folder of possibleFolders) {
+              const [files] = await bucket.getFiles({ prefix: folder });
+
+              for (const file of files) {
+                  if (file.name.endsWith("_main.txt")) {
+                      const [content] = await file.download();
+                      const fileContent = content.toString('utf-8');
+                      const lines = fileContent.split("\n");
+
+                      let foundName = "";
+                      let foundNumber = "";
+
+                      for (const line of lines) {
+                          if (line.startsWith("Full Name:")) {
+                              foundName = line.split(":")[1].trim();
+                          }
+                          if (line.startsWith("Student Number:")) {
+                              foundNumber = line.split(":")[1].trim();
+                          }
+                      }
+
+                      if (foundName.toLowerCase() === query.toLowerCase()) {
+                          studentNumber = foundNumber;
+                          break; // Stop searching once found
+                      }
+                  }
+              }
+
+              if (studentNumber) break;
+          }
+
+          if (studentNumber) {
+              studentDoc = await db.collection('students').doc(studentNumber).get();
           }
       }
 
@@ -562,7 +602,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
       }
 
       const studentData = studentDoc.data();
-      const studentNumber = studentData.studentNumber;
 
       // Fetch violations from Storage
       const filePath = `students/${studentNumber}/${studentNumber}violations.txt`;
@@ -589,6 +628,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 // Assuming Firebase Admin SDK is already initialized
