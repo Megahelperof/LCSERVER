@@ -559,96 +559,147 @@ async function writeStudentData(data) {
 
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
-      const { query } = req.body; // Can be studentNumber or fullName
+    const { query } = req.body; // Can be studentNumber or fullName
+    
+    let studentDoc = null;
+    let studentNumber = null;
+    let studentFolder = null;  // Track the folder where student was found
 
-      let studentDoc = null;
-      let studentNumber = null;
-
-      if (!isNaN(query)) {
-          // If the input is a number, search by studentNumber in Firestore
-          studentDoc = await db.collection('students').doc(query).get();
-          if (studentDoc.exists) {
-              studentNumber = query;
-          }
+    // Remove hyphens and check if the result is a number
+    const cleanedQuery = query.replace(/-/g, '');
+    
+    if (!isNaN(cleanedQuery)) {
+      // If the input is a number (after removing hyphens), search by studentNumber in Firestore
+      studentDoc = await db.collection('students').doc(query).get();
+      if (studentDoc.exists) {
+        studentNumber = query;
+      }
+    } else {
+      // If the input is a string (fullName), first try to search in Firestore
+      const snapshot = await db.collection('students')
+        .where('fullName', '==', query)
+        .limit(1)
+        .get();
+        
+      if (!snapshot.empty) {
+        studentDoc = snapshot.docs[0];
+        studentNumber = studentDoc.id;
       } else {
-          // If the input is a string (fullName), search inside main.txt files in all possible folders
+        // If not found by exact match, try a more flexible search (like lowercase comparison)
+        const allStudents = await db.collection('students').get();
+        for (const doc of allStudents.docs) {
+          const data = doc.data();
+          if (data.fullName && data.fullName.toLowerCase() === query.toLowerCase()) {
+            studentDoc = doc;
+            studentNumber = doc.id;
+            break;
+          }
+        }
+        
+        // If still not found, search inside main.txt files in all possible folders
+        if (!studentNumber) {
           const possibleFolders = [
-              `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
-              `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
-              `students/9/A/`, `students/9/B/`, `stusdents/9/C/`, `students/9/D/`,
-              `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
+            `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
+            `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
+            `students/9/A/`, `students/9/B/`, `students/9/C/`, `students/9/D/`,
+            `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
           ];
 
           for (const folder of possibleFolders) {
-              const [files] = await bucket.getFiles({ prefix: folder });
+            const [files] = await bucket.getFiles({ prefix: folder });
 
-              for (const file of files) {
-                  if (file.name.endsWith("_main.txt")) {
-                      const [content] = await file.download();
-                      const fileContent = content.toString('utf-8');
-                      const lines = fileContent.split("\n");
+            for (const file of files) {
+              if (file.name.endsWith("_main.txt")) {
+                const [content] = await file.download();
+                const fileContent = content.toString('utf-8');
+                const lines = fileContent.split("\n");
 
-                      let foundName = "";
-                      let foundNumber = "";
+                let foundName = "";
+                let foundNumber = "";
 
-                      for (const line of lines) {
-                          if (line.startsWith("Full Name:")) {
-                              foundName = line.split(":")[1].trim();
-                          }
-                          if (line.startsWith("Student Number:")) {
-                              foundNumber = line.split(":")[1].trim();
-                          }
-                      }
-
-                      if (foundName.toLowerCase() === query.toLowerCase()) {
-                          studentNumber = foundNumber;
-                          break; // Stop searching once found
-                      }
+                for (const line of lines) {
+                  if (line.startsWith("Full Name:")) {
+                    foundName = line.split(":")[1].trim();
                   }
-              }
+                  if (line.startsWith("Student Number:")) {
+                    foundNumber = line.split(":")[1].trim();
+                  }
+                }
 
-              if (studentNumber) break;
+                if (foundName.toLowerCase() === query.toLowerCase()) {
+                  studentNumber = foundNumber;
+                  studentFolder = folder;  // Save the folder where student was found
+                  break; // Stop searching once found
+                }
+              }
+            }
+
+            if (studentNumber) break;
           }
 
           if (studentNumber) {
-              studentDoc = await db.collection('students').doc(studentNumber).get();
+            studentDoc = await db.collection('students').doc(studentNumber).get();
           }
+        }
       }
+    }
 
-      if (!studentDoc || !studentDoc.exists) {
-          return res.json({ success: false, message: 'Student not found' });
-      }
+    if (!studentDoc || !studentDoc.exists) {
+      return res.json({ success: false, message: 'Student not found' });
+    }
 
-      const studentData = studentDoc.data();
+    const studentData = studentDoc.data();
 
-      // Fetch violations from Storage
-      const filePath = `students/${studentNumber}/${studentNumber}violations.txt`;
-      const [fileExists] = await bucket.file(filePath).exists();
-
-      let lastViolations = 'None';
+    // Fetch violations from Storage
+    let lastViolations = 'None';
+    
+    // If studentFolder is available, use it to construct the path
+    if (studentFolder) {
+      // Use the folder where student was found to access violations
+      const violationPath = `${studentFolder}${studentNumber}/${studentNumber}violations.txt`;
+      const [fileExists] = await bucket.file(violationPath).exists();
+      
       if (fileExists) {
-          const [content] = await bucket.file(filePath).download();
+        const [content] = await bucket.file(violationPath).download();
+        const violations = content.toString('utf-8').split('\n').filter(Boolean);
+        lastViolations = violations[violations.length - 1] || 'None';
+      }
+    } else {
+      // If student was found in Firestore but folder is unknown, search all possible folders
+      const possibleFolders = [
+        `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
+        `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
+        `students/9/A/`, `students/9/B/`, `students/9/C/`, `students/9/D/`,
+        `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
+      ];
+      
+      for (const folder of possibleFolders) {
+        const violationPath = `${folder}${studentNumber}/${studentNumber}violations.txt`;
+        const [fileExists] = await bucket.file(violationPath).exists();
+        
+        if (fileExists) {
+          const [content] = await bucket.file(violationPath).download();
           const violations = content.toString('utf-8').split('\n').filter(Boolean);
           lastViolations = violations[violations.length - 1] || 'None';
+          break;
+        }
       }
+    }
 
-      res.json({
-          success: true,
-          studentInfo: {
-              studentNumber,
-              fullName: studentData.fullName,
-              lastViolations,
-              details: studentData.notice || 'No additional details'
-          }
-      });
+    res.json({
+      success: true,
+      studentInfo: {
+        studentNumber,
+        fullName: studentData.fullName,
+        lastViolations,
+        details: studentData.notice || 'No additional details'
+      }
+    });
   } catch (error) {
-      console.error('Error fetching student data:', error);
-      res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error('Error fetching student data:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
-
-
 // Assuming Firebase Admin SDK is already initialized
 
 app.post('/admin/submitNotice', async (req, res) => {
