@@ -990,6 +990,7 @@ const routes = {
   '/home': 'index.html',
 };
 
+
 Object.entries(routes).forEach(([route, filePath]) => {
   app.get(route, (req, res) => {
     res.sendFile(path.join(__dirname, filePath));
