@@ -506,6 +506,17 @@ app.post('/api/logEntrance', async (req, res) => {
     });
   }
 });
+app.get('/api/debugStudent/:studentNumber', async (req, res) => {
+  const studentNumber = req.params.studentNumber;
+  const studentDocRef = db.collection('students').doc(studentNumber);
+  const studentDoc = await studentDocRef.get();
+
+  if (!studentDoc.exists) {
+    return res.json({ success: false, message: `Student ${studentNumber} not found in Firestore` });
+  }
+
+  res.json({ success: true, data: studentDoc.data() });
+});
 app.get('/api/search', async (req, res) => {
   const studentNumber = req.query.studentNumber;
 
