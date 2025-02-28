@@ -629,15 +629,13 @@ app.post('/api/getStudentInfo', async (req, res) => {
       studentInfo: {
         studentNumber,
         fullName: studentData.fullName,
+        grade: studentData.grade,       // Added
+        section: studentData.section,    // Added
         lastViolations,
         details: studentData.notice || 'No additional details'
       }
     });
-  } catch (error) {
-    console.error('Error fetching student data:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
+  });
 
 // Assuming Firebase Admin SDK is already initialized
 
@@ -712,23 +710,23 @@ async function updateNotice() {
 }
 
 // Remove a notice
-app.delete('/admin/removeNotice/:fileName', async (req, res) => {
-    try {
-        const { fileName } = req.params;
-        const file = bucket.file(fileName);
+// Modify the DELETE route to handle file paths with slashes
+app.delete('/admin/removeNotice/:fileName(*)', async (req, res) => { // Add (*) wildcard
+  try {
+      const fileName = req.params.fileName; // Now captures the full path
+      const file = bucket.file(fileName);
 
-        const [exists] = await file.exists();
-        if (!exists) {
-            return res.status(404).json({ success: false, message: 'Notice not found' });
-        }
+      const [exists] = await file.exists();
+      if (!exists) {
+          return res.status(404).json({ success: false, message: 'Notice not found' });
+      }
 
-        await file.delete();
-
-        res.json({ success: true, message: 'Notice removed successfully' });
-    } catch (error) {
-        console.error('Error removing notice:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
+      await file.delete();
+      res.json({ success: true, message: 'Notice removed successfully' });
+  } catch (error) {
+      console.error('Error removing notice:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
 
 
