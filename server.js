@@ -8,7 +8,14 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
+import { getStorage, ref, getMetadata, listAll, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
+const { initializeApp } = require('firebase-admin/app');
+const { getStorage } = require('firebase-admin/storage');
 
+// const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
+const firebaseapp = initializeApp(firebaseConfig);
+const storage = getStorage(app);
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
@@ -72,6 +79,12 @@ try {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || "",
     universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
   };
+
+  const firebaseApp = initializeApp({
+    credential: applicationDefault(),
+    storageBucket: 'lcccdb-891ca.appspot.com'
+  });
+  
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -536,23 +549,17 @@ async function writeStudentData(data) {
 
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
-    const { query } = req.body; // Can be studentNumber or fullName
+    const { query } = req.body;
 
     let studentDoc = null;
     let studentNumber = null;
-    let studentFolder = null; // Track the folder where student was found
-
-    // Remove hyphens and check if the result is a number
+    let studentFolder = null;
     const cleanedQuery = query.replace(/-/g, '');
 
     if (!isNaN(cleanedQuery)) {
-      // Search by studentNumber in Firestore
       studentDoc = await db.collection('students').doc(query).get();
-      if (studentDoc.exists) {
-        studentNumber = query;
-      }
+      if (studentDoc.exists) studentNumber = query;
     } else {
-      // Search by fullName in Firestore first
       const snapshot = await db.collection('students')
         .where('fullName', '==', query)
         .limit(1)
@@ -562,65 +569,67 @@ app.post('/api/getStudentInfo', async (req, res) => {
         studentDoc = snapshot.docs[0];
         studentNumber = studentDoc.id;
       } else {
-        // If not found, search inside main.txt files in all possible folders
-        const possibleFolders = folderPaths.possibleFolders;
-
-        for (const folder of possibleFolders) {
+        for (const folder of folderPaths.possibleFolders) {
           const [files] = await bucket.getFiles({ prefix: folder });
-
           for (const file of files) {
             if (file.name.endsWith('_main.txt')) {
               const [content] = await file.download();
               const fileContent = content.toString('utf-8');
               const lines = fileContent.split("\n");
-
-              let foundName = "";
-              let foundNumber = "";
+              let foundName = "", foundNumber = "";
 
               for (const line of lines) {
-                if (line.startsWith("Full Name:")) {
-                  foundName = line.split(":")[1].trim();
-                }
-                if (line.startsWith("Student Number:")) {
-                  foundNumber = line.split(":")[1].trim();
-                }
+                if (line.startsWith("Full Name:")) foundName = line.split(":")[1].trim();
+                if (line.startsWith("Student Number:")) foundNumber = line.split(":")[1].trim();
               }
 
               if (foundName.toLowerCase() === query.toLowerCase()) {
                 studentNumber = foundNumber;
-                studentFolder = folder; // Save the folder where student was found
-                break; // Stop searching once found
+                studentFolder = folder;
+                break;
               }
             }
           }
-
           if (studentNumber) break;
         }
-
-        if (studentNumber) {
-          studentDoc = await db.collection('students').doc(studentNumber).get();
-        }
+        if (studentNumber) studentDoc = await db.collection('students').doc(studentNumber).get();
       }
     }
 
-    if (!studentDoc || !studentDoc.exists) {
-      return res.json({ success: false, message: 'Student not found' });
-    }
+    if (!studentDoc?.exists) return res.json({ success: false, message: 'Student not found' });
 
     const studentData = studentDoc.data();
-
-    // Fetch violations from Storage
     let lastViolations = 'None';
+    let noticeDetails = 'No additional details';
 
-    // If studentFolder is available, use it to construct the path
+    // Get violations
     if (studentFolder) {
-      const violationPath = `${studentFolder}${studentNumber}/${studentNumber}violations.txt`;
-      const [fileExists] = await bucket.file(violationPath).exists();
-
-      if (fileExists) {
+      const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
+      const [violationExists] = await bucket.file(violationPath).exists();
+      
+      if (violationExists) {
         const [content] = await bucket.file(violationPath).download();
         const violations = content.toString('utf-8').split('\n').filter(Boolean);
         lastViolations = violations.length ? violations[violations.length - 1] : 'None';
+      }
+    }
+
+    // Get notices
+    const [noticeFiles] = await bucket.getFiles({
+      prefix: `notice/${studentNumber}notice_`
+    });
+
+    if (noticeFiles.length > 0) {
+      // Sort by most recent first
+      const sortedNotices = noticeFiles.sort((a, b) => 
+        b.metadata.updated.localeCompare(a.metadata.updated)
+      );
+      
+      try {
+        const [latestNotice] = await sortedNotices[0].download();
+        noticeDetails = latestNotice.toString('utf-8');
+      } catch (error) {
+        console.error('Error loading notice:', error);
       }
     }
 
@@ -629,13 +638,13 @@ app.post('/api/getStudentInfo', async (req, res) => {
       studentInfo: {
         studentNumber,
         fullName: studentData.fullName,
-        grade: studentData.grade,       
-        section: studentData.section,    
+        grade: studentData.grade,
+        section: studentData.section,
         lastViolations,
-        details: studentData.notice || 'No additional details'
+        details: noticeDetails
       }
     });
-  } catch (error) { // Add missing catch block
+  } catch (error) {
     console.error('Error fetching student info:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
