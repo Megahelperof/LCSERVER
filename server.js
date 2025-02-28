@@ -629,13 +629,17 @@ app.post('/api/getStudentInfo', async (req, res) => {
       studentInfo: {
         studentNumber,
         fullName: studentData.fullName,
-        grade: studentData.grade,       // Added
-        section: studentData.section,    // Added
+        grade: studentData.grade,       
+        section: studentData.section,    
         lastViolations,
         details: studentData.notice || 'No additional details'
       }
     });
-  });
+  } catch (error) { // Add missing catch block
+    console.error('Error fetching student info:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 // Assuming Firebase Admin SDK is already initialized
 
