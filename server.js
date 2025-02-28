@@ -13,6 +13,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebas
 const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 
+
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
 const firebaseapp = initializeApp(firebaseConfig);
 const storage = getStorage(app);
@@ -115,33 +116,62 @@ function parseTime(timeString) {
   return { hours, minutes };
 }
 
+function formatTimestamp(date = new Date()) {
+  return format(date, "MM_dd_yyyy_HH_mm_ss");
+}
 function parseDateTime(dateTimeString) {
-  dateTimeString = dateTimeString.replace(/\s*\([^)]*\)/, '').trim();
-  const [datePart, timePart] = dateTimeString.split(', Time: ');
+  try {
+    // Clean and normalize the input
+    const cleanedString = dateTimeString
+      .replace(/\s*\([^)]*\)/g, '') // Remove any parentheses content
+      .replace(/_/g, ' ')           // Replace underscores with spaces
+      .replace(/,?\s*Time:?\s*/i, ' ') // Normalize time prefix
+      .trim();
 
-  if (!datePart || !timePart) {
-    console.error(`Invalid date-time format: ${dateTimeString}`);
+    // Define possible date patterns
+    const patterns = [
+      'MM dd yyyy h mm ss a',  // For "2 28 2025 7 25 28 PM"
+      'MM-dd-yyyy h:mm:ss a',  // For legacy format "02-28-2025 7:25:28 PM"
+      'yyyy MM dd h mm ss a',  // Alternative format
+    ];
+
+    // Try parsing with each pattern
+    for (const pattern of patterns) {
+      try {
+        const parsedDate = parse(cleanedString, pattern, new Date());
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      } catch (patternError) {
+        // Continue to next pattern if parsing fails
+      }
+    }
+
+    // Fallback for non-standard formats
+    const dateParts = cleanedString.match(/(\d+)/g) || [];
+    if (dateParts.length >= 6) {
+      const [month, day, year, hour, minute, second] = dateParts;
+      const period = cleanedString.includes('PM') ? 'PM' : 'AM';
+      const adjustedHours = period === 'PM' && hour < 12 ? 
+        parseInt(hour) + 12 : 
+        parseInt(hour);
+
+      return new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        adjustedHours,
+        parseInt(minute),
+        parseInt(second)
+      );
+    }
+
+    console.error(`Unrecognized date-time format: ${dateTimeString}`);
+    return null;
+  } catch (error) {
+    console.error(`Error parsing date-time: ${dateTimeString}`, error);
     return null;
   }
-
-  const [year, month, day] = datePart.split('-').map(Number);
-  const timeParts = timePart.split('_').filter(Boolean);
-
-  if (timeParts.length < 4) {
-    console.error(`Invalid time format: ${timePart}`);
-    return null;
-  }
-
-  const [hourMinSec, period] = timeParts.slice(-2);
-  const [hours, minutes, seconds] = hourMinSec.split(':').map(Number);
-  const adjustedHours = period.toUpperCase() === 'PM' && hours !== 12 ? hours + 12 : hours;
-
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-    console.error(`Invalid date components: ${dateTimeString}`);
-    return null;
-  }
-
-  return new Date(year, month - 1, day, adjustedHours, minutes, seconds);
 }
 
 function dateMatches(dateTimeString, targetDate) {
