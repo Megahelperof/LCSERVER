@@ -690,36 +690,26 @@ app.get('/admin/notices', async (req, res) => {
 });
 
 // Edit a notice
-app.put('/admin/editNotice/:fileName', async (req, res) => {
-    try {
-        const { fileName } = req.params;
-        const { newNotice } = req.body;
-
-        if (!newNotice) {
-            return res.status(400).json({ success: false, message: 'Missing new notice text' });
-        }
-
-        const file = bucket.file(fileName);
-        const [exists] = await file.exists();
-        if (!exists) {
-            return res.status(404).json({ success: false, message: 'Notice not found' });
-        }
-
-        const currentDate = new Date().toISOString();
-        const fileContent = `Date: ${currentDate}\nNotice: ${newNotice}`;
-
-        await file.save(fileContent, {
-            metadata: {
-                contentType: 'text/plain',
-            },
-        });
-
-        res.json({ success: true, message: 'Notice updated successfully' });
-    } catch (error) {
-        console.error('Error editing notice:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
-});
+// Modified updateNotice() function
+async function updateNotice() {
+  const fileName = document.getElementById('currentFileName').value;
+  const newText = document.getElementById('newNoticeText').value;
+  
+  try {
+      const response = await fetch(`/admin/editNotice/${fileName}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newNotice: newText })
+      });
+      
+      if (response.ok) {
+          loadAllNotices(); // Refresh the list
+          document.getElementById('editNoticePopup').style.display = 'none';
+      }
+  } catch (error) {
+      console.error('Error updating notice:', error);
+  }
+}
 
 // Remove a notice
 app.delete('/admin/removeNotice/:fileName', async (req, res) => {
@@ -918,8 +908,6 @@ app.post('/api/createStudentFolder', async (req, res) => {
     res.status(500).send("Error creating folder or file.");
   }
 });
-
-
 
 app.post('/api/getStudentRecords', async (req, res) => {
   const { studentNumber, date } = req.body;
