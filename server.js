@@ -208,11 +208,6 @@ function getStudentFolderPath(grade, section, studentNumber) {
   return `students/${grade}/${section}/${studentNumber}/`;
 }
 
-// Updated logStudentActivity function
-
-// Updated at the top of server.js with other requires
-const folderPaths = require('./possibleFolders.json');
-
 // Modified logStudentActivity function to use possibleFolders.json
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
