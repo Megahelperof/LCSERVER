@@ -542,87 +542,71 @@ async function writeStudentData(data) {
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
     const { query } = req.body; // Can be studentNumber or fullName
-    
+
     let studentDoc = null;
     let studentNumber = null;
-    let studentFolder = null;  // Track the folder where student was found
+    let studentFolder = null; // Track the folder where student was found
 
     // Remove hyphens and check if the result is a number
     const cleanedQuery = query.replace(/-/g, '');
-    
+
     if (!isNaN(cleanedQuery)) {
-      // If the input is a number (after removing hyphens), search by studentNumber in Firestore
+      // Search by studentNumber in Firestore
       studentDoc = await db.collection('students').doc(query).get();
       if (studentDoc.exists) {
         studentNumber = query;
       }
     } else {
-      // If the input is a string (fullName), first try to search in Firestore
+      // Search by fullName in Firestore first
       const snapshot = await db.collection('students')
         .where('fullName', '==', query)
         .limit(1)
         .get();
-        
+
       if (!snapshot.empty) {
         studentDoc = snapshot.docs[0];
         studentNumber = studentDoc.id;
       } else {
-        // If not found by exact match, try a more flexible search (like lowercase comparison)
-        const allStudents = await db.collection('students').get();
-        for (const doc of allStudents.docs) {
-          const data = doc.data();
-          if (data.fullName && data.fullName.toLowerCase() === query.toLowerCase()) {
-            studentDoc = doc;
-            studentNumber = doc.id;
-            break;
-          }
-        }
-        
-        // If still not found, search inside main.txt files in all possible folders
-        if (!studentNumber) {
-          // Use the folders from the JSON file
-          const possibleFolders = folderPaths.possibleFolders;
+        // If not found, search inside main.txt files in all possible folders
+        const possibleFolders = folderPaths.possibleFolders;
 
-          for (const folder of possibleFolders) {
-            const [files] = await bucket.getFiles({ prefix: folder });
+        for (const folder of possibleFolders) {
+          const [files] = await bucket.getFiles({ prefix: folder });
 
-            for (const file of files) {
-              if (file.name.endsWith("_main.txt")) {
-                const [content] = await file.download();
-                const fileContent = content.toString('utf-8');
-                const lines = fileContent.split("\n");
+          for (const file of files) {
+            if (file.name.endsWith('_main.txt')) {
+              const [content] = await file.download();
+              const fileContent = content.toString('utf-8');
+              const lines = fileContent.split("\n");
 
-                let foundName = "";
-                let foundNumber = "";
+              let foundName = "";
+              let foundNumber = "";
 
-                for (const line of lines) {
-                  if (line.startsWith("Full Name:")) {
-                    foundName = line.split(":")[1].trim();
-                  }
-                  if (line.startsWith("Student Number:")) {
-                    foundNumber = line.split(":")[1].trim();
-                  }
+              for (const line of lines) {
+                if (line.startsWith("Full Name:")) {
+                  foundName = line.split(":")[1].trim();
                 }
-
-                if (foundName.toLowerCase() === query.toLowerCase()) {
-                  studentNumber = foundNumber;
-                  studentFolder = folder;  // Save the folder where student was found
-                  break; // Stop searching once found
+                if (line.startsWith("Student Number:")) {
+                  foundNumber = line.split(":")[1].trim();
                 }
               }
+
+              if (foundName.toLowerCase() === query.toLowerCase()) {
+                studentNumber = foundNumber;
+                studentFolder = folder; // Save the folder where student was found
+                break; // Stop searching once found
+              }
             }
-
-            if (studentNumber) break;
           }
 
-          if (studentNumber) {
-            studentDoc = await db.collection('students').doc(studentNumber).get();
-          }
+          if (studentNumber) break;
+        }
+
+        if (studentNumber) {
+          studentDoc = await db.collection('students').doc(studentNumber).get();
         }
       }
     }
-
-    // The rest of your function remains the same...
 
     if (!studentDoc || !studentDoc.exists) {
       return res.json({ success: false, message: 'Student not found' });
@@ -632,37 +616,16 @@ app.post('/api/getStudentInfo', async (req, res) => {
 
     // Fetch violations from Storage
     let lastViolations = 'None';
-    
+
     // If studentFolder is available, use it to construct the path
     if (studentFolder) {
-      // Use the folder where student was found to access violations
       const violationPath = `${studentFolder}${studentNumber}/${studentNumber}violations.txt`;
       const [fileExists] = await bucket.file(violationPath).exists();
-      
+
       if (fileExists) {
         const [content] = await bucket.file(violationPath).download();
         const violations = content.toString('utf-8').split('\n').filter(Boolean);
-        lastViolations = violations[violations.length - 1] || 'None';
-      }
-    } else {
-      // If student was found in Firestore but folder is unknown, search all possible folders
-      const possibleFolders = [
-        `students/7/A/`, `students/7/B/`, `students/7/C/`, `students/7/D/`,
-        `students/8/A/`, `students/8/B/`, `students/8/C/`, `students/8/D/`,
-        `students/9/A/`, `students/9/B/`, `students/9/C/`, `students/9/D/`,
-        `students/10/A/`, `students/10/B/`, `students/10/C/`, `students/10/D/`
-      ];
-      
-      for (const folder of possibleFolders) {
-        const violationPath = `${folder}${studentNumber}/${studentNumber}violations.txt`;
-        const [fileExists] = await bucket.file(violationPath).exists();
-        
-        if (fileExists) {
-          const [content] = await bucket.file(violationPath).download();
-          const violations = content.toString('utf-8').split('\n').filter(Boolean);
-          lastViolations = violations[violations.length - 1] || 'None';
-          break;
-        }
+        lastViolations = violations.length ? violations[violations.length - 1] : 'None';
       }
     }
 
@@ -680,6 +643,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 // Assuming Firebase Admin SDK is already initialized
 
 app.post('/admin/submitNotice', async (req, res) => {
@@ -794,121 +758,136 @@ app.post('/api/validateMainBarcode', (req, res) => {
 });
 
 app.post('/api/logViolation', async (req, res) => {
-    try {
-        const { studentNumber, violations, date, manualEntry } = req.body;
+  try {
+    const { studentNumber, violations, date, manualEntry } = req.body;
 
-        if (!studentNumber || !violations || !date) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
-        }
-
-        // Fetch student data to get grade and section
-        const studentRef = admin.firestore().collection('students').doc(studentNumber);
-        const studentDoc = await studentRef.get();
-
-        if (!studentDoc.exists) {
-            return res.status(404).json({ success: false, message: 'Student not found' });
-        }
-
-        const studentData = studentDoc.data();
-        const { grade, section } = studentData;
-
-        // Create the correct folder path
-        const folderPath = getStudentFolderPath(grade, section, studentNumber);
-        const filePath = `${folderPath}${studentNumber}_violations.txt`;
-
-        // Check if the file exists
-        const [fileExists] = await bucket.file(filePath).exists();
-
-        let currentContent = '';
-        if (fileExists) {
-            // If file exists, download its content
-            const [content] = await bucket.file(filePath).download();
-            currentContent = content.toString('utf-8');
-        }
-
-        // Format the new violation log entry
-        const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
-
-        // Combine existing content with new log entry
-        const updatedContent = currentContent + logEntry;
-
-        // Upload the updated content back to Firebase Storage
-        await bucket.file(filePath).save(updatedContent, {
-            contentType: 'text/plain',
-            metadata: {
-                cacheControl: 'private, max-age=0'
-            }
-        });
-
-        // Update the student's record in Firestore
-        await studentRef.set({
-            lastViolationDate: date,
-            violationsCount: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
-
-        res.json({ success: true, message: 'Violations logged successfully' });
-    } catch (error) {
-        console.error('Error logging violations:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+    if (!studentNumber || !violations || !date) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
+
+    // Fetch student data from Firestore
+    const studentRef = db.collection('students').doc(studentNumber);
+    const studentDoc = await studentRef.get();
+
+    if (!studentDoc.exists) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    const studentData = studentDoc.data();
+
+    // 🔹 Dynamically find the correct folder using `possibleFolders.json`
+    let studentFolder = null;
+    for (const folder of folderPaths.possibleFolders) {
+      const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
+      const [mainFileExists] = await bucket.file(mainFilePath).exists();
+
+      if (mainFileExists) {
+        studentFolder = folder;
+        break;
+      }
+    }
+
+    if (!studentFolder) {
+      return res.status(500).json({ success: false, message: 'Could not find the student’s folder.' });
+    }
+
+    const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
+
+    // 🔹 Check if the file exists
+    const [fileExists] = await bucket.file(filePath).exists();
+    let currentContent = '';
+
+    if (fileExists) {
+      const [content] = await bucket.file(filePath).download();
+      currentContent = content.toString('utf-8');
+    }
+
+    // 🔹 Append the new violation entry
+    const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
+    const updatedContent = currentContent + logEntry;
+
+    await bucket.file(filePath).save(updatedContent, {
+      contentType: 'text/plain',
+      metadata: { cacheControl: 'private, max-age=0' },
+    });
+
+    // 🔹 Update Firestore with new violation data
+    await studentRef.set({
+      lastViolationDate: date,
+      violationsCount: admin.firestore.FieldValue.increment(1),
+    }, { merge: true });
+
+    res.json({ success: true, message: 'Violation logged successfully' });
+  } catch (error) {
+    console.error('❌ Error logging violation:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
+
 app.post('/api/logMultipleViolations', async (req, res) => {
   try {
-      const { studentNumber, violations, date, manualEntry } = req.body;
+    const { studentNumber, violations, date, manualEntry } = req.body;
 
-      if (!studentNumber || !violations || violations.length === 0 || !date) {
-          return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!studentNumber || !violations || violations.length === 0 || !date) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // 🔹 Fetch student data from Firestore
+    const studentRef = db.collection('students').doc(studentNumber);
+    const studentDoc = await studentRef.get();
+
+    if (!studentDoc.exists) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    const studentData = studentDoc.data();
+
+    // 🔹 Dynamically find the correct folder using `possibleFolders.json`
+    let studentFolder = null;
+    for (const folder of folderPaths.possibleFolders) {
+      const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
+      const [mainFileExists] = await bucket.file(mainFilePath).exists();
+
+      if (mainFileExists) {
+        studentFolder = folder;
+        break;
       }
+    }
 
-      // Fetch student data to get grade and section
-      const studentRef = admin.firestore().collection('students').doc(studentNumber);
-      const studentDoc = await studentRef.get();
+    if (!studentFolder) {
+      return res.status(500).json({ success: false, message: 'Could not find the student’s folder.' });
+    }
 
-      if (!studentDoc.exists) {
-          return res.status(404).json({ success: false, message: 'Student not found' });
-      }
+    const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
 
-      const studentData = studentDoc.data();
-      const { grade, section } = studentData;
+    // 🔹 Check if the file exists
+    const [fileExists] = await bucket.file(filePath).exists();
+    let currentContent = '';
 
-      // Create the correct folder path
-      const folderPath = getStudentFolderPath(grade, section, studentNumber);
-      const filePath = `${folderPath}${studentNumber}_violations.txt`;
+    if (fileExists) {
+      const [content] = await bucket.file(filePath).download();
+      currentContent = content.toString('utf-8');
+    }
 
-      // Check if the file exists
-      const [fileExists] = await bucket.file(filePath).exists();
+    // 🔹 Append the new violations entry
+    const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
+    const updatedContent = currentContent + logEntry;
 
-      let currentContent = '';
-      if (fileExists) {
-          // If file exists, download its content
-          const [content] = await bucket.file(filePath).download();
-          currentContent = content.toString('utf-8');
-      }
+    await bucket.file(filePath).save(updatedContent, {
+      contentType: 'text/plain',
+      metadata: { cacheControl: 'private, max-age=0' },
+    });
 
-      // Format the new violation log entry
-      const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
+    // 🔹 Update Firestore with new violation data
+    await studentRef.set({
+      lastViolationDate: date,
+      violationsCount: admin.firestore.FieldValue.increment(violations.length),
+    }, { merge: true });
 
-      // Combine existing content with new log entry
-      const updatedContent = currentContent + logEntry;
-
-      // Upload the updated content back to Firebase Storage
-      await bucket.file(filePath).save(updatedContent, {
-          contentType: 'text/plain',
-          metadata: {
-              cacheControl: 'private, max-age=0'
-          }
-      });
-
-      // Update the student's record in Firestore
-      await studentRef.set({
-          lastViolationDate: date,
-          violationsCount: admin.firestore.FieldValue.increment(violations.length)
-      }, { merge: true });
-
-      res.json({ success: true, message: 'Violations logged successfully' });
+    res.json({ success: true, message: 'Multiple violations logged successfully' });
   } catch (error) {
-      console.error('Error logging violations:', error);
-      res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error('❌ Error logging multiple violations:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -916,28 +895,33 @@ app.post('/api/createStudentFolder', async (req, res) => {
   const { studentNumber, fullName, grade, section } = req.body;
 
   if (!studentNumber || !fullName || !grade || !section) {
-    return res.status(400).send("studentNumber, fullName, grade, and section are required.");
+    return res.status(400).send("Student number, full name, grade, and section are required.");
   }
 
   try {
     const folderPath = getStudentFolderPath(grade, section, studentNumber);
+
+    if (!folderPath) {
+      return res.status(500).json({ success: false, message: 'Could not find a suitable folder.' });
+    }
+
     const fileName = `${studentNumber}_main.txt`;
     const fileContent = `Student Number: ${studentNumber}\nFull Name: ${fullName}\nGrade: ${grade}\nSection: ${section}\n`;
 
     const file = bucket.file(`${folderPath}${fileName}`);
     await file.save(fileContent, {
-      metadata: {
-        contentType: 'text/plain',
-      }
+      metadata: { contentType: 'text/plain' },
     });
 
-    // Create Firestore document for the student
-    await db.collection('students').doc(studentNumber).set({
-      studentNumber,
-      fullName,
-      grade,
-      section
-    });
+    await db.collection('students').doc(studentNumber).set({ studentNumber, fullName, grade, section });
+
+    res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
+  } catch (error) {
+    console.error("Error creating folder or file:", error);
+    res.status(500).send("Error creating folder or file.");
+  }
+});
+
 
     console.log(`Folder and file created for student number: ${studentNumber}`);
     res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
