@@ -910,21 +910,15 @@ app.post('/api/createStudentFolder', async (req, res) => {
 
     await db.collection('students').doc(studentNumber).set({ studentNumber, fullName, grade, section });
 
-    res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
-  } catch (error) {
-    console.error("Error creating folder or file:", error);
-    res.status(500).send("Error creating folder or file.");
-  }
-});
-
-
     console.log(`Folder and file created for student number: ${studentNumber}`);
     res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
+
   } catch (error) {
     console.error("Error creating folder or file:", error);
     res.status(500).send("Error creating folder or file.");
   }
 });
+
 
 
 app.post('/api/getStudentRecords', async (req, res) => {
