@@ -9,6 +9,16 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
 
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "lcccdb-891ca.appspot.com",
+  });
+}
+
+// Ensure `db` and `bucket` are assigned only after Firebase is initialized
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
 const storage = admin.storage();
@@ -77,13 +87,6 @@ const serviceAccount = {
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
 };
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "lcccdb-891ca.appspot.com",
-  });
-}
-
 console.log("✅ Firebase initialized successfully!");
 
 } catch (error) {
@@ -91,9 +94,7 @@ console.error("❌ Firebase initialization error:", error);
 process.exit(1);
 }
 
-// Ensure `db` and `bucket` are assigned only after Firebase is initialized
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+
 
 const dataFilePath = path.join(__dirname, 'studentData.json');
 
