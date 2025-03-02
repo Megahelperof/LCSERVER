@@ -12,19 +12,21 @@ const app = express();
 // const app = express(); // Duplicate declaration removed
 app.use((req, res, next) => {
   const allowedOrigins = [
-    'https://lcccdb-891ca.web.app',
+    'https://lcccdb-891ca.web.app', // Your Firebase Hosting URL
     'https://lcccdb-891ca.firebaseapp.com',
-    'https://lcserver.onrender.com' // Temporary
+    'https://your-app-name.web.app', // Add additional Firebase URLs
+    'http://localhost:5000' // Keep for local development
   ];
   
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
++   res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+- res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -551,23 +553,27 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
       return res.json({ success: false, message: `Student ${studentNumber} not found in Firestore` });
   }
 
-  res.json({ success: true, data: studentDoc.data() });
-});
-
+// server.js - validate-token endpoint
 app.post('/api/validate-token', async (req, res) => {
-  const { token } = req.body;
-
-  if (!token || token.length !== 4) {
-    return res.status(400).json({ valid: false });
-  }
-
-  const filePath = `Token/${token}.txt`;
-
   try {
+    const { token } = req.body;
+    
+    if (!token || token.length !== 4) {
+      return res.status(400).json({ valid: false });
+    }
+
+    const filePath = `Token/${token}.txt`;
     const [fileExists] = await bucket.file(filePath).exists();
+    
++   // Explicitly set CORS headers for this endpoint
++   res.header('Access-Control-Allow-Origin', req.headers.origin);
++   res.header('Access-Control-Allow-Credentials', 'true');
+    
     return res.status(200).json({ valid: fileExists });
   } catch (error) {
     console.error('Error checking token:', error);
++   res.header('Access-Control-Allow-Origin', req.headers.origin);
++   res.header('Access-Control-Allow-Credentials', 'true');
     return res.status(500).json({ valid: false });
   }
 });
