@@ -13,7 +13,8 @@ const { getStorage } = require('firebase-admin/storage');
 
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-const storage = getStorage(app);
+const storage = admin.storage();
+// const bucket = admin.storage().bucket(); // Duplicate declaration removed
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
@@ -83,11 +84,11 @@ try {
     storageBucket: 'lcccdb-891ca.appspot.com'
   });
   
-
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: "lcccdb-891ca.appspot.com",
   });
+  
 
   console.log("✅ Firebase initialized successfully!");
 } catch (error) {
