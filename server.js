@@ -8,8 +8,6 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-const { initializeApp } = require('firebase-admin/app');
-const { getStorage } = require('firebase-admin/storage');
 
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
@@ -79,15 +77,15 @@ const serviceAccount = {
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
 };
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: "lcccdb-891ca.appspot.com",
-    });
-  }
-  
-  const db = admin.firestore();
-  const bucket = admin.storage().bucket();
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "lcccdb-891ca.appspot.com",
+  });
+}
+
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
 
   console.log("✅ Firebase initialized successfully!");
 } catch (error) {
