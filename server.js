@@ -9,6 +9,7 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
 
+
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
     throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables");
@@ -28,13 +29,6 @@ const serviceAccount = {
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
 };
 
-console.log("✅ Firebase initialized successfully!");
-
-} catch (error) {
-console.error("❌ Firebase initialization error:", error);
-process.exit(1);
-}
-
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -45,6 +39,15 @@ if (!admin.apps.length) {
 // Ensure `db` and `bucket` are assigned only after Firebase is initialized
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
+
+console.log("✅ Firebase initialized successfully!");
+
+} catch (error) {
+console.error("❌ Firebase initialization error:", error);
+process.exit(1);
+}
+
+
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
 const storage = admin.storage();
@@ -92,6 +95,10 @@ app.post('/api/data', (req, res) => {
     message: 'Data received successfully!'
   });
 });
+
+// Firebase Admin SDK initialization
+
+
 
 const dataFilePath = path.join(__dirname, 'studentData.json');
 
