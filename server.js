@@ -84,17 +84,17 @@ if (!admin.apps.length) {
   });
 }
 
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+console.log("✅ Firebase initialized successfully!");
 
-  console.log("✅ Firebase initialized successfully!");
 } catch (error) {
-  console.error("❌ Firebase initialization error:", error);
-  process.exit(1);
+console.error("❌ Firebase initialization error:", error);
+process.exit(1);
 }
 
+// Ensure `db` and `bucket` are assigned only after Firebase is initialized
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
+
 const dataFilePath = path.join(__dirname, 'studentData.json');
 
 // Global variables
