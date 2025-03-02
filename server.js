@@ -167,6 +167,12 @@ function parseDateTime(dateTimeString) {
   }
 }
 
+// Add this near your other route definitions
+app.get('/api/index.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public', 'index.js')); // Assuming you have an index.js file in your public folder
+});
+
 function dateMatches(dateTimeString, targetDate) {
   const parsedDate = parseDateTime(dateTimeString);
   return parsedDate ? parsedDate.toISOString().split('T')[0] === targetDate : false;
