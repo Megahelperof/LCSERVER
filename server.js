@@ -9,14 +9,13 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
 
-// const app = express(); // Duplicate declaration removed
 app.use(express.json());
 app.use((req, res, next) => {
   const allowedOrigins = [
-    'https://lcccdb-891ca.web.app', // Your Firebase Hosting URL
+    'https://lcccdb-891ca.web.app', 
     'https://lcccdb-891ca.firebaseapp.com',
-    'https://your-app-name.web.app', // Add additional Firebase URLs
-    'http://localhost:5000' // Keep for local development
+    'https://your-app-name.web.app', 
+    'http://localhost:5000'
   ];
   
   const origin = req.headers.origin;
@@ -36,7 +35,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.options('*', cors()); // Handle preflight requests
+app.options('*', cors()); 
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
@@ -69,7 +68,6 @@ console.log("✅ Firebase initialized successfully!");
 const storage = admin.storage();
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
-  // Make db and bucket available to the rest of the app
   app.locals.db = db;
   app.locals.bucket = bucket;
 
@@ -82,7 +80,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
 const folderPaths = require('./possiblefolder.json');
-// ✅ Define explicit routes for admin pages **BEFORE** static file handling
 const routes = {
   '/admin/settings': 'settings.html',
   '/admin/dashboard': 'dashboard.html',
@@ -96,7 +93,6 @@ const routes = {
   '/admin/login': 'AdminUser/login.html',
 };
 
-// Sample POST endpoint
 app.post('/api/data', (req, res) => {
   const data = req.body;
   console.log('Received data:', data);
@@ -107,17 +103,11 @@ app.post('/api/data', (req, res) => {
   });
 });
 
-// Firebase Admin SDK initialization
-
-
-
 const dataFilePath = path.join(__dirname, 'studentData.json');
 
-// Global variables
 let startTime = '04:10';
 let lateTime = '07:10';
 
-// Utility functions
 function getPhilippineTime() {
   return new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
 }
@@ -132,21 +122,19 @@ function formatTimestamp(date = new Date()) {
 }
 function parseDateTime(dateTimeString) {
   try {
-    // Clean and normalize the input
+  
     const cleanedString = dateTimeString
-      .replace(/\s*\([^)]*\)/g, '') // Remove any parentheses content
-      .replace(/_/g, ' ')           // Replace underscores with spaces
-      .replace(/,?\s*Time:?\s*/i, ' ') // Normalize time prefix
+      .replace(/\s*\([^)]*\)/g, '') 
+      .replace(/_/g, ' ')           
+      .replace(/,?\s*Time:?\s*/i, ' ') 
       .trim();
 
-    // Define possible date patterns
     const patterns = [
-      'MM dd yyyy h mm ss a',  // For "2 28 2025 7 25 28 PM"
-      'MM-dd-yyyy h:mm:ss a',  // For legacy format "02-28-2025 7:25:28 PM"
-      'yyyy MM dd h mm ss a',  // Alternative format
+      'MM dd yyyy h mm ss a',  
+      'MM-dd-yyyy h:mm:ss a',  
+      'yyyy MM dd h mm ss a',  
     ];
 
-    // Try parsing with each pattern
     for (const pattern of patterns) {
       try {
         const parsedDate = parse(cleanedString, pattern, new Date());
@@ -154,11 +142,10 @@ function parseDateTime(dateTimeString) {
           return parsedDate;
         }
       } catch (patternError) {
-        // Continue to next pattern if parsing fails
+
       }
     }
 
-    // Fallback for non-standard formats
     const dateParts = cleanedString.match(/(\d+)/g) || [];
     if (dateParts.length >= 6) {
       const [month, day, year, hour, minute, second] = dateParts;
@@ -185,10 +172,9 @@ function parseDateTime(dateTimeString) {
   }
 }
 
-// Add this near your other route definitions
 app.get('/api/index.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'public', 'index.js')); // Assuming you have an index.js file in your public folder
+  res.sendFile(path.join(__dirname, 'public', 'index.js')); 
 });
 
 function dateMatches(dateTimeString, targetDate) {
@@ -196,7 +182,6 @@ function dateMatches(dateTimeString, targetDate) {
   return parsedDate ? parsedDate.toISOString().split('T')[0] === targetDate : false;
 }
 
-// Authentication middleware
 async function authenticate(req, res, next) {
   try {
     const authToken = req.cookies.authToken;
@@ -213,7 +198,6 @@ async function authenticate(req, res, next) {
   }
 }
 
-// Routes
 app.post('/api/validate', (req, res) => {
   const { token } = req.body;
   res.json({ 
@@ -231,8 +215,6 @@ async function getLastActivity(studentNumber, date) {
     const entryTimes = studentData.entryTime || [];
     const exitTimes = studentData.exitTime || [];
 
-
-    // Find the last activity on the given date
     for (let i = entryTimes.length - 1; i >= 0; i--) {
       if (dateMatches(entryTimes[i], date)) {
         return { time: entryTimes[i], type: 'entry' };
@@ -263,23 +245,19 @@ function isLate(entryTime) {
   return time < startThreshold || time > lateThreshold;
 }
 
-// Helper function to get the folder path for a student
 function getStudentFolderPath(grade, section, studentNumber) {
   return `students/${grade}/${section}/${studentNumber}/`;
 }
 
-// Modified logStudentActivity function to use possibleFolders.json
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
   const formattedActivityTime = activityTime.replace(/[^\w\s]/gi, '_');
   const date = new Date(activityTime).toISOString().split('T')[0];
 
-  // Find the correct folder path based on the student's grade and section
   let folderPath = null;
   let grade = null;
   let section = null;
 
-  // Check for the main.txt file in all possible folders from the JSON file
   const possibleFolders = folderPaths.possibleFolders;
 
   for (const folder of possibleFolders) {
@@ -288,7 +266,6 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
 
     if (mainFileExists) {
       folderPath = folder;
-      // Read the student's grade and section from the main file
       const [content] = await bucket.file(mainFilePath).download();
       const fileContent = content.toString('utf-8');
       const lines = fileContent.split('\n');
@@ -317,12 +294,11 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
     let lateTag = '';
     let violationsTag = '';
 
-    // Check for last activity
     const lastActivity = await getLastActivity(studentNumber, date);
     if (lastActivity) {
       const lastActivityTime = new Date(lastActivity.time);
       const currentTime = new Date(activityTime);
-      const timeDiff = (currentTime - lastActivityTime) / (1000 * 60); // difference in minutes
+      const timeDiff = (currentTime - lastActivityTime) / (1000 * 60); 
       const lastActivityDate = lastActivityTime.toISOString().split('T')[0];
 
       if (lastActivityDate === date) {
@@ -343,7 +319,6 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
       violationsTag = ' (Violations)';
     }
 
-    // Update Firestore
     const activityType = isExit ? 'exitTime' : 'entryTime';
     const studentDocRef = db.collection('students').doc(studentNumber);
     const studentDoc = await studentDocRef.get();
@@ -367,7 +342,6 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
       });
     }
 
-    // Update activity file in Firebase Storage
     const activityLabel = isExit ? 'Exit' : 'Entry';
     const activityFileContent = `${activityLabel} Date: ${date}, Time: ${formattedActivityTime}${lateTag}${violationsTag}\n`;
     await appendToFirebaseFile(logFilePath, activityFileContent);
@@ -379,9 +353,6 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
     throw error;
   }
 }
-// Updated logStudentActivity function
-
-
 
 async function appendToFirebaseFile(filePath, content) {
   try {
@@ -408,7 +379,6 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
   const filePath = `${folderPath}${studentNumber}_main.txt`;
 
   try {
-    // Read existing content
     const [fileExists] = await bucket.file(filePath).exists();
     let content = '';
     if (fileExists) {
@@ -416,27 +386,22 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
       content = fileContent.toString('utf-8');
     }
 
-    // Parse existing content
     const lines = content.split('\n');
-    const headerLines = lines.slice(0, 4); // Assuming the first 4 lines are header information
+    const headerLines = lines.slice(0, 4); 
     let lateEntries = lines.slice(4).filter(line => line.trim() !== '');
 
-    // Add new entry if it's late
     if (newEntry.includes('(Late)')) {
       lateEntries.push(newEntry);
     }
 
-    // Sort late entries by date
     lateEntries.sort((a, b) => {
       const dateA = new Date(a.split(', Time:')[0].split('Date: ')[1]);
       const dateB = new Date(b.split(', Time:')[0].split('Date: ')[1]);
       return dateB - dateA;
     });
 
-    // Combine header and sorted late entries
     const updatedContent = [...headerLines, ...lateEntries].join('\n');
 
-    // Upload updated content
     await bucket.file(filePath).save(updatedContent, {
       contentType: 'text/plain',
       metadata: {
@@ -450,7 +415,6 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
   }
 }
 
-// New endpoint to set late times
 app.post('/api/setLateTimes', (req, res) => {
   const { newStartTime, newLateTime } = req.body;
 
@@ -458,7 +422,6 @@ app.post('/api/setLateTimes', (req, res) => {
     return res.status(400).json({ success: false, message: 'Both start time and late time are required.' });
   }
 
-  // Validate time format (HH:MM)
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   if (!timeRegex.test(newStartTime) || !timeRegex.test(newLateTime)) {
     return res.status(400).json({ success: false, message: 'Invalid time format. Use HH:MM.' });
@@ -557,7 +520,6 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
   res.json({ success: true, studentData: studentDoc.data() });
 });
 
-// server.js - validate-token endpoint
 app.post('/api/validate-token', async (req, res) => {
   try {
     const { token } = req.body;
@@ -568,8 +530,7 @@ app.post('/api/validate-token', async (req, res) => {
 
     const filePath = `Token/${token}.txt`;
     const [fileExists] = await bucket.file(filePath).exists();
-    
-+   // Explicitly set CORS headers for this endpoint
+
 +   res.header('Access-Control-Allow-Origin', req.headers.origin);
 +   res.header('Access-Control-Allow-Credentials', 'true');
     
@@ -582,7 +543,6 @@ app.post('/api/validate-token', async (req, res) => {
   }
 });
 
-// Helper function to read student data
 async function readStudentData() {
     try {
         const data = await fs.readFile(dataFilePath, 'utf8');
@@ -592,7 +552,7 @@ async function readStudentData() {
         return {};
     }
 }
-// Helper function to write student data
+
 async function writeStudentData(data) {
     try {
         await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
@@ -656,7 +616,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
     let lastViolations = 'None';
     let noticeDetails = 'No additional details';
 
-    // Get violations
     if (studentFolder) {
       const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
       const [violationExists] = await bucket.file(violationPath).exists();
@@ -668,13 +627,12 @@ app.post('/api/getStudentInfo', async (req, res) => {
       }
     }
 
-    // Get notices
+
     const [noticeFiles] = await bucket.getFiles({
       prefix: `notice/${studentNumber}notice_`
     });
 
     if (noticeFiles.length > 0) {
-      // Sort by most recent first
       const sortedNotices = noticeFiles.sort((a, b) => 
         b.metadata.updated.localeCompare(a.metadata.updated)
       );
@@ -704,8 +662,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
   }
 });
 
-// Assuming Firebase Admin SDK is already initialized
-
 app.post('/admin/submitNotice', async (req, res) => {
     try {
         const { studentNumber, noticeText } = req.body;
@@ -734,8 +690,6 @@ app.post('/admin/submitNotice', async (req, res) => {
     }
 });
 
-
-// Fetch all notices
 app.get('/admin/notices', async (req, res) => {
     try {
         const [files] = await bucket.getFiles({ prefix: 'notice/' });
@@ -754,8 +708,6 @@ app.get('/admin/notices', async (req, res) => {
     }
 });
 
-// Edit a notice
-// Modified updateNotice() function
 async function updateNotice() {
   const fileName = document.getElementById('currentFileName').value;
   const newText = document.getElementById('newNoticeText').value;
@@ -768,7 +720,7 @@ async function updateNotice() {
       });
       
       if (response.ok) {
-          loadAllNotices(); // Refresh the list
+          loadAllNotices(); 
           document.getElementById('editNoticePopup').style.display = 'none';
       }
   } catch (error) {
@@ -776,11 +728,9 @@ async function updateNotice() {
   }
 }
 
-// Remove a notice
-// Modify the DELETE route to handle file paths with slashes
-app.delete('/admin/removeNotice/:fileName(*)', async (req, res) => { // Add (*) wildcard
+app.delete('/admin/removeNotice/:fileName(*)', async (req, res) => { 
   try {
-      const fileName = req.params.fileName; // Now captures the full path
+      const fileName = req.params.fileName; 
       const file = bucket.file(fileName);
 
       const [exists] = await file.exists();
@@ -815,7 +765,6 @@ app.post('/api/logViolation', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    // Fetch student data from Firestore
     const studentRef = db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
@@ -825,7 +774,6 @@ app.post('/api/logViolation', async (req, res) => {
 
     const studentData = studentDoc.data();
 
-    // 🔹 Dynamically find the correct folder using `possibleFolders.json`
     let studentFolder = null;
     for (const folder of folderPaths.possibleFolders) {
       const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
@@ -843,7 +791,6 @@ app.post('/api/logViolation', async (req, res) => {
 
     const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
 
-    // 🔹 Check if the file exists
     const [fileExists] = await bucket.file(filePath).exists();
     let currentContent = '';
 
@@ -852,7 +799,6 @@ app.post('/api/logViolation', async (req, res) => {
       currentContent = content.toString('utf-8');
     }
 
-    // 🔹 Append the new violation entry
     const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
     const updatedContent = currentContent + logEntry;
 
@@ -861,7 +807,6 @@ app.post('/api/logViolation', async (req, res) => {
       metadata: { cacheControl: 'private, max-age=0' },
     });
 
-    // 🔹 Update Firestore with new violation data
     await studentRef.set({
       lastViolationDate: date,
       violationsCount: admin.firestore.FieldValue.increment(1),
@@ -882,7 +827,6 @@ app.post('/api/logMultipleViolations', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    // 🔹 Fetch student data from Firestore
     const studentRef = db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
@@ -892,7 +836,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
 
     const studentData = studentDoc.data();
 
-    // 🔹 Dynamically find the correct folder using `possibleFolders.json`
+
     let studentFolder = null;
     for (const folder of folderPaths.possibleFolders) {
       const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
@@ -910,7 +854,6 @@ app.post('/api/logMultipleViolations', async (req, res) => {
 
     const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
 
-    // 🔹 Check if the file exists
     const [fileExists] = await bucket.file(filePath).exists();
     let currentContent = '';
 
@@ -919,7 +862,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
       currentContent = content.toString('utf-8');
     }
 
-    // 🔹 Append the new violations entry
+
     const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
     const updatedContent = currentContent + logEntry;
 
@@ -928,7 +871,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
       metadata: { cacheControl: 'private, max-age=0' },
     });
 
-    // 🔹 Update Firestore with new violation data
+
     await studentRef.set({
       lastViolationDate: date,
       violationsCount: admin.firestore.FieldValue.increment(violations.length),
@@ -992,7 +935,7 @@ app.post('/api/getStudentRecords', async (req, res) => {
     const studentData = studentDoc.data();
     const records = [];
 
-    // Check entry times
+
     if (studentData.entryTime) {
       studentData.entryTime.forEach(entry => {
         if (dateMatches(entry, date)) {
@@ -1001,7 +944,6 @@ app.post('/api/getStudentRecords', async (req, res) => {
       });
     }
 
-    // Check exit times
     if (studentData.exitTime) {
       studentData.exitTime.forEach(exit => {
         if (dateMatches(exit, date)) {
@@ -1010,7 +952,6 @@ app.post('/api/getStudentRecords', async (req, res) => {
       });
     }
 
-    // Check violations
     if (studentData.violations) {
       studentData.violations.forEach(violation => {
         const violationDate = new Date(violation.split('T')[0]).toISOString().split('T')[0];
@@ -1020,7 +961,6 @@ app.post('/api/getStudentRecords', async (req, res) => {
       });
     }
 
-    // Sort records by time
     records.sort((a, b) => {
       const timeA = parseDateTime(a.includes('Violation') ? a.split(': ')[1] : a);
       const timeB = parseDateTime(b.includes('Violation') ? b.split(': ')[1] : b);
@@ -1089,16 +1029,15 @@ app.get('/', (req, res) => {
 
 async function authenticateAdmin(req, res, next) {
   try {
-    // Check if request includes a 'shy' header (sent from frontend)
+
     const isShy = req.headers.shy === "shy";
 
     if (isShy) {
       console.log("🟢 LocalStorage 'shy=shy' detected. Granting Owner (Role 1).");
-      req.user = { role: 1 }; // Grant role 1 (Owner)
+      req.user = { role: 1 }; 
       return next();
     }
 
-    // Otherwise, proceed with Firebase Authentication
     const authToken = req.headers.authorization?.split("Bearer ")[1];
 
     if (!authToken) {
@@ -1108,7 +1047,7 @@ async function authenticateAdmin(req, res, next) {
     const decodedToken = await admin.auth().verifyIdToken(authToken);
     const studentNumber = decodedToken.uid;
 
-    // Fetch role from Firestore
+ 
     const adminRef = db.collection("Admin").doc("AdminUser").collection(studentNumber).doc("info");
     const adminDoc = await adminRef.get();
 
@@ -1122,7 +1061,7 @@ async function authenticateAdmin(req, res, next) {
       return res.status(403).json({ success: false, message: "Forbidden: No access" });
     }
 
-    req.user = { ...decodedToken, role }; // Attach role to request
+    req.user = { ...decodedToken, role }; 
     next();
   } catch (error) {
     console.error("Authentication Error:", error);
@@ -1149,11 +1088,10 @@ async function authenticateAdmin(req, res, next) {
 })();
 
 Object.entries(routes).forEach(([route, file]) => {
-  app.get(route, authenticateAdmin, (req, res) => { // 🔒 Protect route
+  app.get(route, authenticateAdmin, (req, res) => { 
       res.sendFile(path.join(__dirname, 'admin', file));
   });
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
@@ -1164,7 +1102,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
