@@ -8,8 +8,6 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-import { getStorage, ref, getMetadata, listAll, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js';
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
 const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 
