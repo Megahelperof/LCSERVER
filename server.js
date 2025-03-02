@@ -55,10 +55,12 @@ const serviceAccount = {
 };
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "lcccdb-891ca.appspot.com",
-  });
+// In server.js initialization
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: "lcccdb-891ca.appspot.com", // Verify this matches your project
+  databaseURL: "https://lcccdb-891ca.firebaseio.com" // Add if needed
+});
 }
 
 console.log("✅ Firebase initialized successfully!");
