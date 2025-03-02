@@ -566,10 +566,16 @@ async function writeStudentData(data) {
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
     const { query } = req.body;
-    const db = admin.firestore(); // Ensure Firestore is correctly initialized
+    const db = app.locals.db; // Use app.locals.db for consistency
+    const bucket = app.locals.bucket; // Use app.locals.bucket for consistency
 
     if (!query || typeof query !== "string") {
       return res.status(400).json({ success: false, message: "Invalid query parameter" });
+    }
+
+    if (!db || !bucket) {
+      console.error("❌ Firestore or Storage not initialized properly");
+      return res.status(500).json({ success: false, message: "Database connection error" });
     }
 
     console.log("🔍 Searching for student:", query);
@@ -597,28 +603,42 @@ app.post('/api/getStudentInfo', async (req, res) => {
         studentNumber = studentDoc.id;
       } else {
         // 🔹 If not found, check Firebase Storage for student records
-        for (const folder of folderPaths.possibleFolders) {
-          const [files] = await bucket.getFiles({ prefix: folder });
-          for (const file of files) {
-            if (file.name.endsWith('_main.txt')) {
-              const [content] = await file.download();
-              const fileContent = content.toString('utf-8');
-              const lines = fileContent.split("\n");
-              let foundName = "", foundNumber = "";
+        try {
+          for (const folder of folderPaths.possibleFolders) {
+            try {
+              const [files] = await bucket.getFiles({ prefix: folder });
+              for (const file of files) {
+                if (file.name.endsWith('_main.txt')) {
+                  try {
+                    const [content] = await file.download();
+                    const fileContent = content.toString('utf-8');
+                    const lines = fileContent.split("\n");
+                    let foundName = "", foundNumber = "";
 
-              for (const line of lines) {
-                if (line.startsWith("Full Name:")) foundName = line.split(":")[1].trim();
-                if (line.startsWith("Student Number:")) foundNumber = line.split(":")[1].trim();
-              }
+                    for (const line of lines) {
+                      if (line.startsWith("Full Name:")) foundName = line.split(":")[1].trim();
+                      if (line.startsWith("Student Number:")) foundNumber = line.split(":")[1].trim();
+                    }
 
-              if (foundName.toLowerCase() === query.toLowerCase()) {
-                studentNumber = foundNumber;
-                studentFolder = folder;
-                break;
+                    if (foundName.toLowerCase() === query.toLowerCase()) {
+                      studentNumber = foundNumber;
+                      studentFolder = folder;
+                      break;
+                    }
+                  } catch (downloadError) {
+                    console.error(`Error downloading file ${file.name}:`, downloadError);
+                    continue;
+                  }
+                }
               }
+              if (studentNumber) break;
+            } catch (folderError) {
+              console.error(`Error accessing folder ${folder}:`, folderError);
+              continue;
             }
           }
-          if (studentNumber) break;
+        } catch (storageError) {
+          console.error("Error accessing storage:", storageError);
         }
 
         if (studentNumber) {
@@ -639,30 +659,38 @@ app.post('/api/getStudentInfo', async (req, res) => {
 
     // 🔹 Check for violations file
     if (studentFolder) {
-      const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
-      const [violationExists] = await bucket.file(violationPath).exists();
+      try {
+        const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
+        const [violationExists] = await bucket.file(violationPath).exists();
 
-      if (violationExists) {
-        const [content] = await bucket.file(violationPath).download();
-        const violations = content.toString('utf-8').split('\n').filter(Boolean);
-        lastViolations = violations.length ? violations[violations.length - 1] : "None";
+        if (violationExists) {
+          const [content] = await bucket.file(violationPath).download();
+          const violations = content.toString('utf-8').split('\n').filter(Boolean);
+          lastViolations = violations.length ? violations[violations.length - 1] : "None";
+        }
+      } catch (violationError) {
+        console.error("Error checking violations:", violationError);
       }
     }
 
     // 🔹 Check for student notices in Firebase Storage
-    const [noticeFiles] = await bucket.getFiles({ prefix: `notice/${studentNumber}notice_` });
+    try {
+      const [noticeFiles] = await bucket.getFiles({ prefix: `notice/${studentNumber}notice_` });
 
-    if (noticeFiles.length > 0) {
-      const sortedNotices = noticeFiles.sort((a, b) => 
-        b.metadata.updated.localeCompare(a.metadata.updated)
-      );
+      if (noticeFiles && noticeFiles.length > 0) {
+        const sortedNotices = noticeFiles.sort((a, b) => 
+          b.metadata.updated.localeCompare(a.metadata.updated)
+        );
 
-      try {
-        const [latestNotice] = await sortedNotices[0].download();
-        noticeDetails = latestNotice.toString('utf-8');
-      } catch (error) {
-        console.error("⚠️ Error loading notice:", error);
+        try {
+          const [latestNotice] = await sortedNotices[0].download();
+          noticeDetails = latestNotice.toString('utf-8');
+        } catch (noticeError) {
+          console.error("⚠️ Error loading notice:", noticeError);
+        }
       }
+    } catch (noticesError) {
+      console.error("Error fetching notices:", noticesError);
     }
 
     console.log(`✅ Student found: ${studentData.fullName} (${studentNumber})`);
@@ -671,8 +699,8 @@ app.post('/api/getStudentInfo', async (req, res) => {
       studentInfo: {
         studentNumber,
         fullName: studentData.fullName,
-        grade: studentData.grade,
-        section: studentData.section,
+        grade: studentData.grade || "Unknown",
+        section: studentData.section || "Unknown",
         lastViolations,
         details: noticeDetails,
       },
@@ -683,7 +711,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
-
 
 app.post('/admin/submitNotice', async (req, res) => {
     try {
