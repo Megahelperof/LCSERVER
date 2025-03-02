@@ -566,16 +566,27 @@ async function writeStudentData(data) {
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
     const { query } = req.body;
+    const db = admin.firestore(); // Ensure Firestore is correctly initialized
+
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ success: false, message: "Invalid query parameter" });
+    }
+
+    console.log("🔍 Searching for student:", query);
 
     let studentDoc = null;
     let studentNumber = null;
     let studentFolder = null;
-    const cleanedQuery = query.replace(/-/g, '');
+    const cleanedQuery = query.replace(/-/g, ''); // Remove hyphens for consistency
 
+    // 🔹 Try searching by student number
     if (!isNaN(cleanedQuery)) {
-      studentDoc = await db.collection('students').doc(query).get();
-      if (studentDoc.exists) studentNumber = query;
+      studentDoc = await db.collection('students').doc(cleanedQuery).get();
+      if (studentDoc.exists) {
+        studentNumber = cleanedQuery;
+      }
     } else {
+      // 🔹 Try searching by full name
       const snapshot = await db.collection('students')
         .where('fullName', '==', query)
         .limit(1)
@@ -585,6 +596,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
         studentDoc = snapshot.docs[0];
         studentNumber = studentDoc.id;
       } else {
+        // 🔹 If not found, check Firebase Storage for student records
         for (const folder of folderPaths.possibleFolders) {
           const [files] = await bucket.getFiles({ prefix: folder });
           for (const file of files) {
@@ -608,45 +620,52 @@ app.post('/api/getStudentInfo', async (req, res) => {
           }
           if (studentNumber) break;
         }
-        if (studentNumber) studentDoc = await db.collection('students').doc(studentNumber).get();
+
+        if (studentNumber) {
+          studentDoc = await db.collection('students').doc(studentNumber).get();
+        }
       }
     }
 
-    if (!studentDoc?.exists) return res.json({ success: false, message: 'Student not found' });
+    // 🔹 If no student record was found
+    if (!studentDoc?.exists) {
+      console.warn(`❌ Student not found: ${query}`);
+      return res.json({ success: false, message: "Student not found" });
+    }
 
     const studentData = studentDoc.data();
-    let lastViolations = 'None';
-    let noticeDetails = 'No additional details';
+    let lastViolations = "None";
+    let noticeDetails = "No additional details";
 
+    // 🔹 Check for violations file
     if (studentFolder) {
       const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
       const [violationExists] = await bucket.file(violationPath).exists();
-      
+
       if (violationExists) {
         const [content] = await bucket.file(violationPath).download();
         const violations = content.toString('utf-8').split('\n').filter(Boolean);
-        lastViolations = violations.length ? violations[violations.length - 1] : 'None';
+        lastViolations = violations.length ? violations[violations.length - 1] : "None";
       }
     }
 
-
-    const [noticeFiles] = await bucket.getFiles({
-      prefix: `notice/${studentNumber}notice_`
-    });
+    // 🔹 Check for student notices in Firebase Storage
+    const [noticeFiles] = await bucket.getFiles({ prefix: `notice/${studentNumber}notice_` });
 
     if (noticeFiles.length > 0) {
       const sortedNotices = noticeFiles.sort((a, b) => 
         b.metadata.updated.localeCompare(a.metadata.updated)
       );
-      
+
       try {
         const [latestNotice] = await sortedNotices[0].download();
         noticeDetails = latestNotice.toString('utf-8');
       } catch (error) {
-        console.error('Error loading notice:', error);
+        console.error("⚠️ Error loading notice:", error);
       }
     }
 
+    console.log(`✅ Student found: ${studentData.fullName} (${studentNumber})`);
     res.json({
       success: true,
       studentInfo: {
@@ -655,14 +674,16 @@ app.post('/api/getStudentInfo', async (req, res) => {
         grade: studentData.grade,
         section: studentData.section,
         lastViolations,
-        details: noticeDetails
-      }
+        details: noticeDetails,
+      },
     });
+
   } catch (error) {
-    console.error('Error fetching student info:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error("❌ Error fetching student info:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 
 app.post('/admin/submitNotice', async (req, res) => {
     try {
