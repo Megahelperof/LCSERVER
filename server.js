@@ -554,6 +554,9 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
       return res.json({ success: false, message: `Student ${studentNumber} not found in Firestore` });
   }
 
+  res.json({ success: true, studentData: studentDoc.data() });
+});
+
 // server.js - validate-token endpoint
 app.post('/api/validate-token', async (req, res) => {
   try {
