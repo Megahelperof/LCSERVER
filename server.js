@@ -8,8 +8,11 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
+import { getStorage, ref, getMetadata, listAll, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
 const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
+
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
 const firebaseapp = initializeApp(firebaseConfig);
@@ -81,6 +84,12 @@ try {
   const firebaseApp = initializeApp({
     credential: applicationDefault(),
     storageBucket: 'lcccdb-891ca.appspot.com'
+  });
+  
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "lcccdb-891ca.appspot.com",
   });
 
   console.log("✅ Firebase initialized successfully!");
