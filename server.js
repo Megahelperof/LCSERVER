@@ -11,7 +11,6 @@ const app = express();
 const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 
-
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
 const firebaseapp = initializeApp(firebaseConfig);
 const storage = getStorage(app);
@@ -82,12 +81,6 @@ try {
   const firebaseApp = initializeApp({
     credential: applicationDefault(),
     storageBucket: 'lcccdb-891ca.appspot.com'
-  });
-  
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "lcccdb-891ca.appspot.com",
   });
 
   console.log("✅ Firebase initialized successfully!");
