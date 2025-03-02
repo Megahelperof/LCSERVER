@@ -8,8 +8,6 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-const storage = admin.storage();
-
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
@@ -36,6 +34,8 @@ if (!admin.apps.length) {
     storageBucket: "lcccdb-891ca.appspot.com",
   });
 }
+
+const storage = admin.storage();
 
 // Ensure `db` and `bucket` are assigned only after Firebase is initialized
 const db = admin.firestore();
