@@ -9,6 +9,17 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
 
+// const app = express(); // Duplicate declaration removed
+app.use(express.json()); // Parse JSON request bodies
+app.use(cors({
+  origin: 'http://127.0.0.1:5000', // Allow requests from your frontend
+  methods: 'GET,POST,PUT,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type, Authorization'
+}));
+
+
+app.options('*', cors()); // Handle preflight requests
+
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
     throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables");
@@ -35,29 +46,23 @@ if (!admin.apps.length) {
   });
 }
 
-const storage = admin.storage();
-
-// Ensure `db` and `bucket` are assigned only after Firebase is initialized
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
-
 console.log("✅ Firebase initialized successfully!");
 
+const storage = admin.storage();
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+  // Make db and bucket available to the rest of the app
+  app.locals.db = db;
+  app.locals.bucket = bucket;
+
 } catch (error) {
-console.error("❌ Firebase initialization error:", error);
-process.exit(1);
+  console.error("❌ Firebase initialization error:", error);
+  process.exit(1);
 }
 
-
-
-// const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-// const bucket = admin.storage().bucket(); // Duplicate declaration removed
-// ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
-
-// Near the top of server.js, with other requires
 const folderPaths = require('./possiblefolder.json');
 // ✅ Define explicit routes for admin pages **BEFORE** static file handling
 const routes = {
@@ -72,18 +77,6 @@ const routes = {
   '/admin/active': 'active.html',
   '/admin/login': 'AdminUser/login.html',
 };
-// Middleware
-
-// const app = express(); // Duplicate declaration removed
-app.use(express.json()); // Parse JSON request bodies
-app.use(cors({
-  origin: 'http://127.0.0.1:5000', // Allow requests from your frontend
-  methods: 'GET,POST,PUT,DELETE,OPTIONS',
-  allowedHeaders: 'Content-Type, Authorization'
-}));
-
-
-app.options('*', cors()); // Handle preflight requests
 
 // Sample POST endpoint
 app.post('/api/data', (req, res) => {
