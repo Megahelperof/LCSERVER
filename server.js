@@ -711,7 +711,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
-
 app.post('/admin/submitNotice', async (req, res) => {
     try {
         const { studentNumber, noticeText } = req.body;
