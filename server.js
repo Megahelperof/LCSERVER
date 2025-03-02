@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
+const storage = admin.storage();
 
 
 try {
@@ -50,7 +51,6 @@ process.exit(1);
 
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-const storage = admin.storage();
 // const bucket = admin.storage().bucket(); // Duplicate declaration removed
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
