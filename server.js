@@ -16,8 +16,7 @@ app.use((req, res, next) => {
     'https://lcccdb-891ca.web.app',
     'https://lcccdb-891ca.firebaseapp.com',
     'http://localhost:5000',    // Firebase Emulator
-    'http://127.0.0.1:5000',    // Explicit localhost
-    'http://localhost:3000',    // Common React/Vite port
+    'http://127.0.0.1:5000',    // Explicit localhost   // Common React/Vite port
     'http://localhost:8080'     // Common static server port
   ];
   
