@@ -95,6 +95,8 @@ const routes = {
   '/admin/login': 'AdminUser/login.html',
 };
 
+console.log("Bucket initialized:", !!admin.storage().bucket());
+
 app.post('/api/data', (req, res) => {
   const data = req.body;
   console.log('Received data:', data);
@@ -531,7 +533,7 @@ app.post('/api/validate-token', async (req, res) => {
     }
 
     const filePath = `Token/${token}.txt`;
-    const [fileExists] = await bucket.file(filePath).exists();
+    const [fileExists] = await buckeapp.locals.bucket.file(filePath).exists();
 
 +   res.header('Access-Control-Allow-Origin', req.headers.origin);
 +   res.header('Access-Control-Allow-Credentials', 'true');
