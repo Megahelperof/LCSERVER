@@ -13,7 +13,6 @@ const { getStorage } = require('firebase-admin/storage');
 
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-const firebaseapp = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
