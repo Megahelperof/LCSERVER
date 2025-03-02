@@ -12,7 +12,7 @@ const app = express();
 // const app = express(); // Duplicate declaration removed
 app.use((req, res, next) => {
   const allowedOrigins = [
-    'https://lcccdb-891ca.web.app',
+    'https://lcccdb-891ca.web.app/',
     'https://lcccdb-891ca.firebaseapp.com'
   ];
   
