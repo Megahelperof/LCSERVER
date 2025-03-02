@@ -64,7 +64,7 @@ if (!admin.apps.length) {
 console.log("✅ Firebase initialized successfully!");
 
 const storage = admin.storage();
-const db = req.app.locals.db;
+const db = admin.firestore(); 
 const bucket = admin.storage().bucket();
   app.locals.db = db;
   app.locals.bucket = bucket;
