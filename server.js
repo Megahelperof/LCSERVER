@@ -34,6 +34,7 @@ app.use((req, res, next) => {
     }
     next();
   });
+});
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
