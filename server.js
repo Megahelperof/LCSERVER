@@ -108,7 +108,10 @@ let lateTime = '07:10';
 
 // Utility functions
 function getPhilippineTime() {
-  return new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
+  return new Date().toLocaleString('en-US', { 
+    timeZone: 'Asia/Manila',
+    hour12: false 
+  }).replace(/,/g, '');
 }
 
 function parseTime(timeString) {
@@ -130,9 +133,8 @@ function parseDateTime(dateTimeString) {
 
     // Define possible date patterns
     const patterns = [
-      'MM dd yyyy h mm ss a',  // For "2 28 2025 7 25 28 PM"
-      'MM-dd-yyyy h:mm:ss a',  // For legacy format "02-28-2025 7:25:28 PM"
-      'yyyy MM dd h mm ss a',  // Alternative format
+      'MM/dd/yyyy HH:mm:ss',  // e.g., "02/28/2025 19:25:28"
+      'MM-dd-yyyy HH:mm:ss',  // Legacy format
     ];
 
     // Try parsing with each pattern
@@ -303,8 +305,8 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
     // Check for last activity
     const lastActivity = await getLastActivity(studentNumber, date);
     if (lastActivity) {
-      const lastActivityTime = new Date(lastActivity.time);
-      const currentTime = new Date(activityTime);
+      const lastActivityTime = parseDateTime(lastActivity.time);
+      const currentTime = parseDateTime(activityTime); 
       const timeDiff = (currentTime - lastActivityTime) / (1000 * 60); // difference in minutes
       const lastActivityDate = lastActivityTime.toISOString().split('T')[0];
 
