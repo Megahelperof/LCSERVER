@@ -528,6 +528,12 @@ app.post('/api/validate-token', async (req, res) => {
       return res.status(400).json({ valid: false });
     }
 
+    const bucket = app.locals.bucket; // ✅ Use app.locals.bucket instead
+    if (!bucket) {
+      console.error("❌ Firebase Storage bucket is not initialized.");
+      return res.status(500).json({ valid: false, message: "Internal server error" });
+    }
+
     const filePath = `Token/${token}.txt`;
     const [fileExists] = await bucket.file(filePath).exists();
     
@@ -537,6 +543,7 @@ app.post('/api/validate-token', async (req, res) => {
     return res.status(500).json({ valid: false });
   }
 });
+
 
 async function readStudentData() {
     try {
