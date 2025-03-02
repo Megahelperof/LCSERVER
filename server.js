@@ -15,7 +15,7 @@ app.use((req, res, next) => {
     'https://lcccdb-891ca.web.app', 
     'https://lcccdb-891ca.firebaseapp.com',
     'https://your-app-name.web.app', 
-    'http://localhost:5000'
+    'http://127.0.0.1:5000'
   ];
   
   const origin = req.headers.origin;
