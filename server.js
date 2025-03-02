@@ -23,21 +23,17 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-+   res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   }
-  
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-- res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
   next();
 });
-
-app.options('*', cors()); 
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
@@ -533,16 +529,11 @@ app.post('/api/validate-token', async (req, res) => {
     }
 
     const filePath = `Token/${token}.txt`;
-    const [fileExists] = await buckeapp.locals.bucket.file(filePath).exists();
-
-+   res.header('Access-Control-Allow-Origin', req.headers.origin);
-+   res.header('Access-Control-Allow-Credentials', 'true');
+    const [fileExists] = await bucket.file(filePath).exists();
     
     return res.status(200).json({ valid: fileExists });
   } catch (error) {
     console.error('Error checking token:', error);
-+   res.header('Access-Control-Allow-Origin', req.headers.origin);
-+   res.header('Access-Control-Allow-Credentials', 'true');
     return res.status(500).json({ valid: false });
   }
 });
