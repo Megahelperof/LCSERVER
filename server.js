@@ -8,13 +8,14 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-
-const { initializeApp: initializeAdminApp } = require('firebase-admin/app');
+import { getStorage, ref, getMetadata, listAll, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
+const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 
 
 // const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-const firebaseapp = initializeAdminApp(firebaseConfig);
+const firebaseapp = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 // ✅ Serve static files for `/public` and `/admin`
 app.use(express.static(path.join(__dirname, 'public')));
@@ -85,6 +86,12 @@ try {
     storageBucket: 'lcccdb-891ca.appspot.com'
   });
   
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "lcccdb-891ca.appspot.com",
+  });
+
   console.log("✅ Firebase initialized successfully!");
 } catch (error) {
   console.error("❌ Firebase initialization error:", error);
@@ -101,10 +108,7 @@ let lateTime = '07:10';
 
 // Utility functions
 function getPhilippineTime() {
-  return new Date().toLocaleString('en-US', { 
-    timeZone: 'Asia/Manila',
-    hour12: false 
-  }).replace(/,/g, '');
+  return new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
 }
 
 function parseTime(timeString) {
@@ -126,8 +130,9 @@ function parseDateTime(dateTimeString) {
 
     // Define possible date patterns
     const patterns = [
-      'MM/dd/yyyy HH:mm:ss',  // e.g., "02/28/2025 19:25:28"
-      'MM-dd-yyyy HH:mm:ss',  // Legacy format
+      'MM dd yyyy h mm ss a',  // For "2 28 2025 7 25 28 PM"
+      'MM-dd-yyyy h:mm:ss a',  // For legacy format "02-28-2025 7:25:28 PM"
+      'yyyy MM dd h mm ss a',  // Alternative format
     ];
 
     // Try parsing with each pattern
@@ -298,8 +303,8 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
     // Check for last activity
     const lastActivity = await getLastActivity(studentNumber, date);
     if (lastActivity) {
-      const lastActivityTime = parseDateTime(lastActivity.time);
-      const currentTime = parseDateTime(activityTime); 
+      const lastActivityTime = new Date(lastActivity.time);
+      const currentTime = new Date(activityTime);
       const timeDiff = (currentTime - lastActivityTime) / (1000 * 60); // difference in minutes
       const lastActivityDate = lastActivityTime.toISOString().split('T')[0];
 
