@@ -23,35 +23,21 @@ app.use((req, res, next) => {
     'http://localhost:8080'     // Common static server port
   ];
   
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin); // Change * to specific frontend domain for security
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
       }
-    }
-    next();
-  });
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  }));
+  
+  app.options('*', cors()); 
 });
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-app.options('*', cors()); 
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
@@ -125,6 +111,18 @@ const dataFilePath = path.join(__dirname, 'studentData.json');
 
 let startTime = '04:10';
 let lateTime = '07:10';
+
+async function testFirebase() {
+  try {
+    const db = admin.firestore();
+    await db.collection('test').add({ message: 'Hello Firebase' });
+    console.log('✅ Firebase write test successful!');
+  } catch (error) {
+    console.error('❌ Firebase error:', error);
+  }
+}
+testFirebase();
+
 
 function getPhilippineTime() {
   return new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
@@ -1160,13 +1158,8 @@ Object.entries(routes).forEach(([route, file]) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server is now listening on port ${PORT}`);
-}).on('error', (err) => {
-  console.error(`❌ Error starting server: ${err.message}`);
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Try another port.`);
-  }
 });
 
 app.use((req, res, next) => {
