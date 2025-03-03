@@ -10,27 +10,25 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const { Storage } = require('@google-cloud/storage');
 
-// Initialize storage
-let bucket;
+// Initialize Google Cloud Storage
+let storageBucket;
 try {
   // Create a storage client
   const storage = new Storage();
   // Set your bucket name
-  const bucketName = 'lcccdb-891ca.appspot.com'; // Replace with your actual bucket name
-  bucket = storage.bucket(bucketName);
+  const bucketName = 'lcccdb-891ca.appspot.com'; // Your actual bucket name
+  storageBucket = storage.bucket(bucketName);
   console.log('Storage bucket initialized successfully');
 } catch (error) {
   console.error('Failed to initialize storage bucket:', error);
 }
 
-// const app = express(); // Duplicate declaration removed
 app.use(express.json()); // Parse JSON request bodies
 app.use(cors({
   origin: 'http://127.0.0.1:5000', // Allow requests from your frontend
   methods: 'GET,POST,PUT,DELETE,OPTIONS',
   allowedHeaders: 'Content-Type, Authorization'
 }));
-
 
 app.options('*', cors()); // Handle preflight requests
 
@@ -39,35 +37,34 @@ try {
     throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables");
   }
 
-const serviceAccount = {
-  type: process.env.FIREBASE_TYPE || "",
-  project_id: process.env.FIREBASE_PROJECT_ID || "",
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID || "",
-  private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-  client_email: process.env.FIREBASE_CLIENT_EMAIL || "",
-  client_id: process.env.FIREBASE_CLIENT_ID || "",
-  auth_uri: process.env.FIREBASE_AUTH_URI || "",
-  token_uri: process.env.FIREBASE_TOKEN_URI || "",
-  auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || "",
-  client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || "",
-  universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
-};
+  const serviceAccount = {
+    type: process.env.FIREBASE_TYPE || "",
+    project_id: process.env.FIREBASE_PROJECT_ID || "",
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID || "",
+    private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL || "",
+    client_id: process.env.FIREBASE_CLIENT_ID || "",
+    auth_uri: process.env.FIREBASE_AUTH_URI || "",
+    token_uri: process.env.FIREBASE_TOKEN_URI || "",
+    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || "",
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || "",
+    universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
+  };
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "lcccdb-891ca.appspot.com",
-  });
-}
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket: "lcccdb-891ca.appspot.com",
+    });
+  }
 
-console.log("✅ Firebase initialized successfully!");
+  console.log("✅ Firebase initialized successfully!");
 
-const storage = admin.storage();
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+  const db = admin.firestore();
+  const firebaseBucket = admin.storage().bucket();
   // Make db and bucket available to the rest of the app
   app.locals.db = db;
-  app.locals.bucket = bucket;
+  app.locals.bucket = firebaseBucket;
 
 } catch (error) {
   console.error("❌ Firebase initialization error:", error);
@@ -555,14 +552,17 @@ app.post('/api/validate-token', async (req, res) => {
     return res.status(400).json({ valid: false, error: 'Invalid token format' });
   }
   
-  if (!bucket) {
-    console.error('Storage bucket not initialized');
+  // Use the app.locals.bucket or the storageBucket as fallback
+  const bucketToUse = app.locals.bucket || storageBucket;
+  
+  if (!bucketToUse) {
+    console.error('No storage bucket available');
     return res.status(500).json({ valid: false, error: 'Storage not available' });
   }
   
   const filePath = `Token/${token}.txt`;
   try {
-    const [fileExists] = await bucket.file(filePath).exists();
+    const [fileExists] = await bucketToUse.file(filePath).exists();
     console.log(`Token ${token} validation result:`, fileExists);
     return res.status(200).json({ valid: fileExists });
   } catch (error) {
@@ -570,7 +570,6 @@ app.post('/api/validate-token', async (req, res) => {
     return res.status(500).json({ valid: false, error: error.message });
   }
 });
-
 // Helper function to read student data
 async function readStudentData() {
     try {
