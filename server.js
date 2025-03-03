@@ -252,9 +252,29 @@ function isLate(entryTime) {
   return time < startThreshold || time > lateThreshold;
 }
 
-// Helper function to get the folder path for a student
 function getStudentFolderPath(grade, section, studentNumber) {
-  return `students/${grade}/${section}/${studentNumber}/`;
+  try {
+    // Get section name from mapping
+    const sectionName = SECTION_MAP[grade]?.[section];
+    if (!sectionName) {
+      console.error("Invalid grade/section combination:", grade, section);
+      return null;
+    }
+
+    // Construct folder path
+    const folderPath = `students/${grade}/${sectionName}/${studentNumber}/`;
+    
+    // Verify folder exists in possibleFolders
+    if (!possibleFolders.includes(folderPath)) {
+      console.error("Invalid folder path configuration:", folderPath);
+      return null;
+    }
+
+    return folderPath;
+  } catch (error) {
+    console.error("Error in getStudentFolderPath:", error);
+    return null;
+  }
 }
 
 // Modified logStudentActivity function to use possibleFolders.json
@@ -933,6 +953,14 @@ app.post('/api/logMultipleViolations', async (req, res) => {
   }
 });
 
+// Section mapping configuration
+const SECTION_MAP = {
+  '7': {'A': 'Purity', 'B': 'Hope', 'C': 'Faith', 'D': 'Charity'},
+  '8': {'A': 'Courage', 'B': 'Courtesy', 'C': 'Diligence', 'D': 'Industry'},
+  '9': {'A': 'Prudence', 'B': 'Perseverance', 'C': 'Patience', 'D': 'Humility'},
+  '10': {'A': 'Charism', 'B': 'Peace', 'C': 'Fortitude', 'D': 'Amity', 'E': 'Love'}
+};
+
 app.post('/api/createStudentFolder', async (req, res) => {
   const { studentNumber, fullName, grade, section } = req.body;
 
@@ -944,7 +972,10 @@ app.post('/api/createStudentFolder', async (req, res) => {
     const folderPath = getStudentFolderPath(grade, section, studentNumber);
 
     if (!folderPath) {
-      return res.status(500).json({ success: false, message: 'Could not find a suitable folder.' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid grade/section combination or folder configuration.' 
+      });
     }
 
     const fileName = `${studentNumber}_main.txt`;
@@ -955,7 +986,14 @@ app.post('/api/createStudentFolder', async (req, res) => {
       metadata: { contentType: 'text/plain' },
     });
 
-    await db.collection('students').doc(studentNumber).set({ studentNumber, fullName, grade, section });
+    // Store student information including the folderPath for reference
+    await db.collection('students').doc(studentNumber).set({ 
+      studentNumber, 
+      fullName, 
+      grade, 
+      section,
+      folderPath
+    });
 
     console.log(`Folder and file created for student number: ${studentNumber}`);
     res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
@@ -965,7 +1003,6 @@ app.post('/api/createStudentFolder', async (req, res) => {
     res.status(500).send("Error creating folder or file.");
   }
 });
-
 app.post('/api/getStudentRecords', async (req, res) => {
   const { studentNumber, date } = req.body;
 
