@@ -266,7 +266,7 @@ function getStudentFolderPath(grade, section, studentNumber) {
 // Modified logStudentActivity function to use possibleFolders.json
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
-  const formattedActivityTime = activityTime.replace(/[^\w\s]/gi, '_');
+  const formattedActivityTime = activityTime.toISOString().replace(/[^\w\s]/gi, '_');
   const date = activityTime.toISOString().split('T')[0];
 
   // Find the correct folder path based on the student's grade and section
