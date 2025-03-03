@@ -977,13 +977,14 @@ app.post('/api/createStudentFolder', async (req, res) => {
     await file.save(fileContent, { metadata: { contentType: 'text/plain' } });
 
     // 🔹 Store student information in Firestore
-    await db.collection('students').doc(studentNumber).set({
-      studentNumber,
-      fullName,
-      grade,
-      section: sectionName,
-      folderPath
-    });
+// 🔹 Store student information in Firestore
+await app.locals.db.collection('students').doc(studentNumber).set({  // Changed db to app.locals.db
+  studentNumber,
+  fullName,
+  grade,
+  section: sectionName,
+  folderPath
+});
 
     console.log(`✅ Folder and file created for student: ${studentNumber}`);
     res.status(200).json({ success: true, message: `Folder and file created for ${studentNumber}.` });
