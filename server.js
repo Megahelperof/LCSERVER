@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8080;
 const app = express();
 const { format } = require('date-fns');
 
-app.use(cors());
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
@@ -37,6 +37,21 @@ app.use((req, res, next) => {
     next();
   });
 });
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+app.options('*', cors()); 
 
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
