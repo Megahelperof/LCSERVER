@@ -60,11 +60,11 @@ try {
 
   console.log("✅ Firebase initialized successfully!");
 
-  const db = admin.firestore();
-  const firebaseBucket = admin.storage().bucket();
+  const db = req.app.locals.db;
+  const bucket = req.app.locals.bucket;
   // Make db and bucket available to the rest of the app
   app.locals.db = db;
-  app.locals.bucket = firebaseBucket;
+  app.locals.bucket = bucket;
 
 } catch (error) {
   console.error("❌ Firebase initialization error:", error);
@@ -592,6 +592,8 @@ async function writeStudentData(data) {
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
     const { query } = req.body;
+    const db = admin.firestore(); // Get a reference to Firestore directly
+    const bucket = admin.storage().bucket(); // Get a reference to storage bucket directly
 
     let studentDoc = null;
     let studentNumber = null;
