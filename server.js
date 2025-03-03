@@ -252,6 +252,11 @@ function isLate(entryTime) {
   return time < startThreshold || time > lateThreshold;
 }
 
+// Helper function to get the folder path for a student
+function getStudentFolderPath(grade, section, studentNumber) {
+  return `students/${grade}/${section}/${studentNumber}/`;
+}
+
 function getStudentFolderPath(grade, section, studentNumber) {
   try {
     // Get section name from mapping
