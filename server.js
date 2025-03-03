@@ -60,8 +60,10 @@ try {
 
   console.log("✅ Firebase initialized successfully!");
 
-  const db = req.app.locals.db;
-  const bucket = req.app.locals.bucket;
+  // Get references to Firestore and Storage
+  const db = admin.firestore();
+  const bucket = admin.storage().bucket();
+  
   // Make db and bucket available to the rest of the app
   app.locals.db = db;
   app.locals.bucket = bucket;
