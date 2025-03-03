@@ -35,8 +35,6 @@ app.use((req, res, next) => {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
   }));
-  
-  app.options('*', cors()); 
 });
 
 try {
