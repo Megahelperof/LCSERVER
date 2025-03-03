@@ -1147,8 +1147,12 @@ Object.entries(routes).forEach(([route, file]) => {
 
 app.listen(PORT, () => {
   console.log(`✅ Server is now listening on port ${PORT}`);
+}).on('error', (err) => {
+  console.error(`❌ Error starting server: ${err.message}`);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Try another port.`);
+  }
 });
-
 
 app.use((req, res, next) => {
   console.log(`Requested URL: ${req.url}`);
