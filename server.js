@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const { Storage } = require('@google-cloud/storage');
 
+
 // Initialize Google Cloud Storage
 let storageBucket;
 try {
@@ -252,6 +253,12 @@ function isLate(entryTime) {
   return time < startThreshold || time > lateThreshold;
 }
 
+// Helper function to get the folder path for a student
+function getStudentFolderPath(grade, section, studentNumber) {
+  return `students/${grade}/${section}/${studentNumber}/`;
+}
+
+// Modified logStudentActivity function to use possibleFolders.json
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
   const formattedActivityTime = activityTime.replace(/[^\w\s]/gi, '_');
@@ -928,67 +935,54 @@ app.post('/api/logMultipleViolations', async (req, res) => {
 });
 
 // Section mapping configuration
-const SECTION_MAP = {
-  '7': {'A': 'Purity', 'B': 'Hope', 'C': 'Faith', 'D': 'Charity'},
-  '8': {'A': 'Courage', 'B': 'Courtesy', 'C': 'Diligence', 'D': 'Industry'},
-  '9': {'A': 'Prudence', 'B': 'Perseverance', 'C': 'Patience', 'D': 'Humility'},
-  '10': {'A': 'Charism', 'B': 'Peace', 'C': 'Fortitude', 'D': 'Amity', 'E': 'Love'}
-};
-
-// Helper function to get the folder path for a student (maintain your original structure)
-function getStudentFolderPath(grade, section, studentNumber) {
-  // Construct folder path using your original pattern
-  const folderPath = `students/${grade}/${section}/${studentNumber}/`;
-  
-  // Validate against possible folders if needed
-  if (possibleFolders && !possibleFolders.includes(folderPath)) {
-    console.error("Invalid folder path configuration:", folderPath);
-    return null;
-  }
-  
-  return folderPath;
-}
-
 app.post('/api/createStudentFolder', async (req, res) => {
   const { studentNumber, fullName, grade, section } = req.body;
 
   if (!studentNumber || !fullName || !grade || !section) {
-    return res.status(400).send("Student number, full name, grade, and section are required.");
+    return res.status(400).json({ success: false, message: "All fields are required." });
   }
 
+  // Convert section code (A, B, C) to full section name
+  const SECTION_MAP = {
+    '7': { 'A': 'Purity', 'B': 'Hope', 'C': 'Faith', 'D': 'Charity' },
+    '8': { 'A': 'Courage', 'B': 'Courtesy', 'C': 'Diligence', 'D': 'Industry' },
+    '9': { 'A': 'Prudence', 'B': 'Perseverance', 'C': 'Patience', 'D': 'Humility' },
+    '10': { 'A': 'Charism', 'B': 'Peace', 'C': 'Fortitude', 'D': 'Amity', 'E': 'Love' }
+  };
+
+  const sectionName = SECTION_MAP[grade]?.[section];
+
+  if (!sectionName) {
+    return res.status(400).json({ success: false, message: "Invalid section selected." });
+  }
+
+  // Construct folder path using full section name
+  const folderPath = `students/${grade}/${sectionName}/${studentNumber}/`;
+
   try {
-    const folderPath = getStudentFolderPath(grade, section, studentNumber);
-
-    if (!folderPath) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid folder configuration.' 
-      });
-    }
-
     const fileName = `${studentNumber}_main.txt`;
-    const fileContent = `Student Number: ${studentNumber}\nFull Name: ${fullName}\nGrade: ${grade}\nSection: ${section}\n`;
+    const fileContent = `Student Number: ${studentNumber}\nFull Name: ${fullName}\nGrade: ${grade}\nSection: ${sectionName}\n`;
 
     const file = bucket.file(`${folderPath}${fileName}`);
     await file.save(fileContent, {
       metadata: { contentType: 'text/plain' },
     });
 
-    // Store student information including the folderPath for reference
-    await db.collection('students').doc(studentNumber).set({ 
-      studentNumber, 
-      fullName, 
-      grade, 
-      section,
+    // Store student information with correct folder path
+    await db.collection('students').doc(studentNumber).set({
+      studentNumber,
+      fullName,
+      grade,
+      section: sectionName,
       folderPath
     });
 
     console.log(`Folder and file created for student number: ${studentNumber}`);
-    res.status(200).send(`Folder and file created successfully for ${studentNumber}.`);
+    res.status(200).json({ success: true, message: `Folder and file created for ${studentNumber}.` });
 
   } catch (error) {
     console.error("Error creating folder or file:", error);
-    res.status(500).send("Error creating folder or file.");
+    res.status(500).json({ success: false, message: "Error creating folder or file." });
   }
 });
 app.post('/api/getStudentRecords', async (req, res) => {
