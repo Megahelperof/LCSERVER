@@ -10,7 +10,10 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const { format } = require('date-fns');
 
+app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.use((req, res, next) => {
   const allowedOrigins = [
     'https://lcccdb-891ca.web.app',
@@ -76,8 +79,6 @@ const bucket = admin.storage().bucket();
   process.exit(1);
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
 const folderPaths = require('./possiblefolder.json');
 const routes = {
@@ -1152,6 +1153,8 @@ app.use((req, res, next) => {
   console.log(`Requested URL: ${req.url}`);
   next();
 });
+
+console.log(`✅ Server attempting to run on port ${PORT}`);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
