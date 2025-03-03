@@ -953,22 +953,30 @@ app.post('/api/createStudentFolder', async (req, res) => {
   const sectionName = SECTION_MAP[grade]?.[section];
 
   if (!sectionName) {
+    console.error(`❌ Invalid section: Grade ${grade}, Section ${section}`);
     return res.status(400).json({ success: false, message: "Invalid section selected." });
   }
 
   // Construct folder path using full section name
   const folderPath = `students/${grade}/${sectionName}/${studentNumber}/`;
+  console.log(`📂 Resolved folder path: ${folderPath}`);
 
   try {
     const fileName = `${studentNumber}_main.txt`;
     const fileContent = `Student Number: ${studentNumber}\nFull Name: ${fullName}\nGrade: ${grade}\nSection: ${sectionName}\n`;
 
     const file = bucket.file(`${folderPath}${fileName}`);
-    await file.save(fileContent, {
-      metadata: { contentType: 'text/plain' },
-    });
 
-    // Store student information with correct folder path
+    // 🔹 Check Firebase Storage write permissions
+    await bucket.file("test_write.txt").save("Test Content", {
+      metadata: { contentType: "text/plain" },
+    });
+    console.log("✅ Firebase Storage Write Test Passed");
+
+    // 🔹 Save student file
+    await file.save(fileContent, { metadata: { contentType: 'text/plain' } });
+
+    // 🔹 Store student information in Firestore
     await db.collection('students').doc(studentNumber).set({
       studentNumber,
       fullName,
@@ -977,14 +985,15 @@ app.post('/api/createStudentFolder', async (req, res) => {
       folderPath
     });
 
-    console.log(`Folder and file created for student number: ${studentNumber}`);
+    console.log(`✅ Folder and file created for student: ${studentNumber}`);
     res.status(200).json({ success: true, message: `Folder and file created for ${studentNumber}.` });
 
   } catch (error) {
-    console.error("Error creating folder or file:", error);
-    res.status(500).json({ success: false, message: "Error creating folder or file." });
+    console.error("❌ Error creating folder or file:", error);
+    res.status(500).json({ success: false, message: error.message || "Error creating folder or file." });
   }
 });
+
 app.post('/api/getStudentRecords', async (req, res) => {
   const { studentNumber, date } = req.body;
 
