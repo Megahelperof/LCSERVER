@@ -115,7 +115,12 @@ let lateTime = '07:10';
 
 // Utility functions
 function getPhilippineTime() {
-  return new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
+  // Create date object with Manila timezone offset
+  const now = new Date();
+  const philippineOffset = +8 * 60; // UTC+8 in minutes
+  const localOffset = now.getTimezoneOffset();
+  const philippineTime = new Date(now.getTime() + (philippineOffset + localOffset) * 60000);
+  return philippineTime;
 }
 
 function parseTime(timeString) {
@@ -262,7 +267,7 @@ function getStudentFolderPath(grade, section, studentNumber) {
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
   const formattedActivityTime = activityTime.replace(/[^\w\s]/gi, '_');
-  const date = new Date(activityTime).toISOString().split('T')[0];
+  const date = activityTime.toISOString().split('T')[0];
 
   // Find the correct folder path based on the student's grade and section
   let folderPath = null;
