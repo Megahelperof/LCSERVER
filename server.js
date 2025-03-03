@@ -8,34 +8,6 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-const { initializeApp } = require('firebase-admin/app');
-const { getStorage } = require('firebase-admin/storage');
-
-
-// const bucket = getStorage(firebaseApp).bucket(); // Duplicate declaration removed
-const storage = admin.storage();
-// const bucket = admin.storage().bucket(); // Duplicate declaration removed
-// ✅ Serve static files for `/public` and `/admin`
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
-
-
-// Near the top of server.js, with other requires
-const folderPaths = require('./possiblefolder.json');
-// ✅ Define explicit routes for admin pages **BEFORE** static file handling
-const routes = {
-  '/admin/settings': 'settings.html',
-  '/admin/dashboard': 'dashboard.html',
-  '/admin/notice': 'notice.html',
-  '/admin/manualviolation': 'manualviolation.html',
-  '/admin/UserCreate': 'UserCreate.html',
-  '/admin/studentsearch': 'studentsearch.html',
-  '/admin/searchdate': 'searchdate.html',
-  '/admin/usernotice': 'usernotice.html',
-  '/admin/active': 'active.html',
-  '/admin/login': 'AdminUser/login.html',
-};
-// Middleware
 
 // const app = express(); // Duplicate declaration removed
 app.use(express.json()); // Parse JSON request bodies
@@ -48,18 +20,6 @@ app.use(cors({
 
 app.options('*', cors()); // Handle preflight requests
 
-// Sample POST endpoint
-app.post('/api/data', (req, res) => {
-  const data = req.body;
-  console.log('Received data:', data);
-  res.json({ 
-    received: true, 
-    data: data,
-    message: 'Data received successfully!'
-  });
-});
-
-// Firebase Admin SDK initialization
 try {
   if (!process.env.FIREBASE_PRIVATE_KEY) {
     throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables");
@@ -79,24 +39,60 @@ const serviceAccount = {
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
 };
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: "lcccdb-891ca.appspot.com",
-    });
-  }
-  
-  const db = admin.firestore();
-  const bucket = admin.storage().bucket();
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "lcccdb-891ca.appspot.com",
+  });
+}
 
-  console.log("✅ Firebase initialized successfully!");
+console.log("✅ Firebase initialized successfully!");
+
+const storage = admin.storage();
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+  // Make db and bucket available to the rest of the app
+  app.locals.db = db;
+  app.locals.bucket = bucket;
+
 } catch (error) {
   console.error("❌ Firebase initialization error:", error);
   process.exit(1);
 }
 
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+const folderPaths = require('./possiblefolder.json');
+// ✅ Define explicit routes for admin pages **BEFORE** static file handling
+const routes = {
+  '/admin/settings': 'settings.html',
+  '/admin/dashboard': 'dashboard.html',
+  '/admin/notice': 'notice.html',
+  '/admin/manualviolation': 'manualviolation.html',
+  '/admin/UserCreate': 'UserCreate.html',
+  '/admin/studentsearch': 'studentsearch.html',
+  '/admin/searchdate': 'searchdate.html',
+  '/admin/usernotice': 'usernotice.html',
+  '/admin/active': 'active.html',
+  '/admin/login': 'AdminUser/login.html',
+};
+
+// Sample POST endpoint
+app.post('/api/data', (req, res) => {
+  const data = req.body;
+  console.log('Received data:', data);
+  res.json({ 
+    received: true, 
+    data: data,
+    message: 'Data received successfully!'
+  });
+});
+
+// Firebase Admin SDK initialization
+
+
+
 const dataFilePath = path.join(__dirname, 'studentData.json');
 
 // Global variables
@@ -1142,6 +1138,6 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
     success: false, 
-    message: 'Internal servers error' 
+    message: 'Internal server error' 
   });
 });
