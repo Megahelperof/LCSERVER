@@ -709,7 +709,7 @@ app.post('/admin/submitNotice', async (req, res) => {
 
         const bucket = admin.storage().bucket();
         const fileName = `notice/${studentNumber}notice_${uuidv4()}.txt`;
-        const file = bucket.file(fileName);
+        const file = app.locals.bucket.file(fileName);
 
         const currentDate = new Date().toISOString();
         const fileContent = `Date: ${currentDate}\nNotice: ${noticeText}`;
@@ -774,7 +774,7 @@ async function updateNotice() {
 app.delete('/admin/removeNotice/:fileName(*)', async (req, res) => { // Add (*) wildcard
   try {
       const fileName = req.params.fileName; // Now captures the full path
-      const file = bucket.file(fileName);
+      const file = app.locals.bucket.file(fileName);
 
       const [exists] = await file.exists();
       if (!exists) {
@@ -965,7 +965,7 @@ app.post('/api/createStudentFolder', async (req, res) => {
     const fileName = `${studentNumber}_main.txt`;
     const fileContent = `Student Number: ${studentNumber}\nFull Name: ${fullName}\nGrade: ${grade}\nSection: ${sectionName}\n`;
 
-    const file = bucket.file(`${folderPath}${fileName}`);
+    const file = app.locals.bucket.file(`${folderPath}${fileName}`);
 
     // 🔹 Check Firebase Storage write permissions
     await bucket.file("test_write.txt").save("Test Content", {
