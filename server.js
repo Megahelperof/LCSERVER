@@ -15,26 +15,26 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.use((req, res, next) => {
-  const allowedOrigins = [
-    'https://lcccdb-891ca.web.app',
-    'https://lcccdb-891ca.firebaseapp.com',
-    'http://localhost:5000',    // Firebase Emulator
-    'http://127.0.0.1:5000',    // Explicit localhost   // Common React/Vite port
-    'http://localhost:8080'     // Common static server port
-  ];
-  
-  app.use(cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-  }));
+const allowedOrigins = [
+  'https://lcccdb-891ca.web.app',
+  'https://lcccdb-891ca.firebaseapp.com',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000', 
+  'http://localhost:8080'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 });
 
 try {
@@ -42,18 +42,19 @@ try {
     throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables");
   }
 
+// In Firebase initialization section
 const serviceAccount = {
-  type: process.env.FIREBASE_TYPE || "",
-  project_id: process.env.FIREBASE_PROJECT_ID || "",
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID || "",
-  private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-  client_email: process.env.FIREBASE_CLIENT_EMAIL || "",
-  client_id: process.env.FIREBASE_CLIENT_ID || "",
-  auth_uri: process.env.FIREBASE_AUTH_URI || "",
-  token_uri: process.env.FIREBASE_TOKEN_URI || "",
-  auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || "",
-  client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL || "",
-  universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN || "",
+  type: process.env.FIREBASE_TYPE,
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  client_id: process.env.FIREBASE_CLIENT_ID,
+  auth_uri: process.env.FIREBASE_AUTH_URI,
+  token_uri: process.env.FIREBASE_TOKEN_URI,
+  auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+  client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL,
+  universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
 };
 
 if (!admin.apps.length) {
