@@ -213,7 +213,7 @@ app.post('/api/validate', (req, res) => {
 });
 
 async function getLastActivity(studentNumber, date) {
-  const studentDocRef = db.collection('students').doc(studentNumber);
+  const studentDocRef = app.locals.db.collection('students').doc(studentNumber);
   const studentDoc = await studentDocRef.get();
   const studentData = studentDoc.exists ? studentDoc.data() : null;
 
@@ -274,12 +274,12 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
 
   for (const folder of possibleFolders) {
     const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
-    const [mainFileExists] = await bucket.file(mainFilePath).exists();
+    const [mainFileExists] = await app.locals.bucket.file(mainFilePath).exists();
 
     if (mainFileExists) {
       folderPath = folder;
       // Read the student's grade and section from the main file
-      const [content] = await bucket.file(mainFilePath).download();
+      const [content] = await app.locals.bucket.file(mainFilePath).download();
       const fileContent = content.toString('utf-8');
       const lines = fileContent.split('\n');
 
@@ -335,7 +335,7 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
 
     // Update Firestore
     const activityType = isExit ? 'exitTime' : 'entryTime';
-    const studentDocRef = db.collection('students').doc(studentNumber);
+    const studentDocRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentDocRef.get();
     const studentData = studentDoc.exists ? studentDoc.data() : null;
 
@@ -375,7 +375,7 @@ async function logStudentActivity(studentNumber, fullName, logViolations = false
 
 async function appendToFirebaseFile(filePath, content) {
   try {
-    const file = bucket.file(filePath);
+    const file = app.locals.bucket.file(filePath);
     const [exists] = await file.exists();
 
     if (!exists) {
@@ -399,10 +399,10 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
 
   try {
     // Read existing content
-    const [fileExists] = await bucket.file(filePath).exists();
+    const [fileExists] = await app.locals.bucket.file(filePath).exists();
     let content = '';
     if (fileExists) {
-      const [fileContent] = await bucket.file(filePath).download();
+      const [fileContent] = await app.locals.bucket.file(filePath).download();
       content = fileContent.toString('utf-8');
     }
 
@@ -427,7 +427,7 @@ async function updateMainTxtWithLateEntries(studentNumber, grade, section, newEn
     const updatedContent = [...headerLines, ...lateEntries].join('\n');
 
     // Upload updated content
-    await bucket.file(filePath).save(updatedContent, {
+    await app.locals.bucket.file(filePath).save(updatedContent, {
       contentType: 'text/plain',
       metadata: {
         cacheControl: 'private, max-age=0'
@@ -473,7 +473,7 @@ app.post('/api/logActivity', async (req, res) => {
   }
 
   try {
-    const studentDocRef = db.collection('students').doc(studentNumber);
+    const studentDocRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentDocRef.get();
 
     if (!studentDoc.exists) {
@@ -537,7 +537,7 @@ app.post('/api/logEntrance', async (req, res) => {
 });
 app.get('/api/debugStudent/:studentNumber', async (req, res) => {
   const studentNumber = req.params.studentNumber;
-  const studentDocRef = db.collection('students').doc(studentNumber);
+  const studentDocRef = app.locals.db.collection('students').doc(studentNumber);
   const studentDoc = await studentDocRef.get();
 
   if (!studentDoc.exists) {
@@ -604,10 +604,10 @@ app.post('/api/getStudentInfo', async (req, res) => {
     const cleanedQuery = query.replace(/-/g, '');
 
     if (!isNaN(cleanedQuery)) {
-      studentDoc = await db.collection('students').doc(query).get();
+      studentDoc = await app.locals.db.collection('students').doc(query).get();
       if (studentDoc.exists) studentNumber = query;
     } else {
-      const snapshot = await db.collection('students')
+      const snapshot = await app.locals.db.collection('students')
         .where('fullName', '==', query)
         .limit(1)
         .get();
@@ -639,7 +639,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
           }
           if (studentNumber) break;
         }
-        if (studentNumber) studentDoc = await db.collection('students').doc(studentNumber).get();
+        if (studentNumber) studentDoc = await app.locals.db.collection('students').doc(studentNumber).get();
       }
     }
 
@@ -652,17 +652,17 @@ app.post('/api/getStudentInfo', async (req, res) => {
     // Get violations
     if (studentFolder) {
       const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
-      const [violationExists] = await bucket.file(violationPath).exists();
+      const [violationExists] = await app.locals.bucket.file(violationPath).exists();
       
       if (violationExists) {
-        const [content] = await bucket.file(violationPath).download();
+        const [content] = await app.locals.bucket.file(violationPath).download();
         const violations = content.toString('utf-8').split('\n').filter(Boolean);
         lastViolations = violations.length ? violations[violations.length - 1] : 'None';
       }
     }
 
     // Get notices
-    const [noticeFiles] = await bucket.getFiles({
+    const [noticeFiles] = await app.locals.bucket.getFiles({
       prefix: `notice/${studentNumber}notice_`
     });
 
@@ -731,7 +731,7 @@ app.post('/admin/submitNotice', async (req, res) => {
 // Fetch all notices
 app.get('/admin/notices', async (req, res) => {
     try {
-        const [files] = await bucket.getFiles({ prefix: 'notice/' });
+        const [files] = await app.locals.bucket.getFiles({ prefix: 'notice/' });
         const notices = await Promise.all(files.map(async (file) => {
             const [content] = await file.download();
             return {
@@ -809,7 +809,7 @@ app.post('/api/logViolation', async (req, res) => {
     }
 
     // Fetch student data from Firestore
-    const studentRef = db.collection('students').doc(studentNumber);
+    const studentRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
     if (!studentDoc.exists) {
@@ -822,7 +822,7 @@ app.post('/api/logViolation', async (req, res) => {
     let studentFolder = null;
     for (const folder of folderPaths.possibleFolders) {
       const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
-      const [mainFileExists] = await bucket.file(mainFilePath).exists();
+      const [mainFileExists] = await app.locals.bucket.file(mainFilePath).exists();
 
       if (mainFileExists) {
         studentFolder = folder;
@@ -837,11 +837,11 @@ app.post('/api/logViolation', async (req, res) => {
     const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
 
     // 🔹 Check if the file exists
-    const [fileExists] = await bucket.file(filePath).exists();
+    const [fileExists] = await app.locals.bucket.file(filePath).exists();
     let currentContent = '';
 
     if (fileExists) {
-      const [content] = await bucket.file(filePath).download();
+      const [content] = await bucketapp.locals.bucket.file(filePath).download();
       currentContent = content.toString('utf-8');
     }
 
@@ -849,7 +849,7 @@ app.post('/api/logViolation', async (req, res) => {
     const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
     const updatedContent = currentContent + logEntry;
 
-    await bucket.file(filePath).save(updatedContent, {
+    await app.locals.bucket.file(filePath).save(updatedContent, {
       contentType: 'text/plain',
       metadata: { cacheControl: 'private, max-age=0' },
     });
@@ -876,7 +876,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
     }
 
     // 🔹 Fetch student data from Firestore
-    const studentRef = db.collection('students').doc(studentNumber);
+    const studentRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
     if (!studentDoc.exists) {
@@ -889,7 +889,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
     let studentFolder = null;
     for (const folder of folderPaths.possibleFolders) {
       const mainFilePath = `${folder}${studentNumber}/${studentNumber}_main.txt`;
-      const [mainFileExists] = await bucket.file(mainFilePath).exists();
+      const [mainFileExists] = await app.locals.bucket.file(mainFilePath).exists();
 
       if (mainFileExists) {
         studentFolder = folder;
@@ -904,11 +904,11 @@ app.post('/api/logMultipleViolations', async (req, res) => {
     const filePath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
 
     // 🔹 Check if the file exists
-    const [fileExists] = await bucket.file(filePath).exists();
+    const [fileExists] = await app.locals.bucket.file(filePath).exists();
     let currentContent = '';
 
     if (fileExists) {
-      const [content] = await bucket.file(filePath).download();
+      const [content] = await app.locals.bucket.file(filePath).download();
       currentContent = content.toString('utf-8');
     }
 
@@ -916,7 +916,7 @@ app.post('/api/logMultipleViolations', async (req, res) => {
     const logEntry = `${date}: ${violations.join(', ')}${manualEntry ? ' (Manual Entry)' : ''}\n`;
     const updatedContent = currentContent + logEntry;
 
-    await bucket.file(filePath).save(updatedContent, {
+    await app.locals.bucket.file(filePath).save(updatedContent, {
       contentType: 'text/plain',
       metadata: { cacheControl: 'private, max-age=0' },
     });
@@ -1003,7 +1003,7 @@ app.post('/api/getStudentRecords', async (req, res) => {
   }
 
   try {
-    const studentRef = db.collection('students').doc(studentNumber);
+    const studentRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
     if (!studentDoc.exists) {
@@ -1064,7 +1064,7 @@ app.post('/api/getViolationsSummary', async (req, res) => {
   }
 
   try {
-    const studentRef = db.collection('students').doc(studentNumber);
+    const studentRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentRef.get();
 
     if (!studentDoc.exists) {
@@ -1130,7 +1130,7 @@ async function authenticateAdmin(req, res, next) {
     const studentNumber = decodedToken.uid;
 
     // Fetch role from Firestore
-    const adminRef = db.collection("Admin").doc("AdminUser").collection(studentNumber).doc("info");
+    const adminRef = app.locals.db.collection("Admin").doc("AdminUser").collection(studentNumber).doc("info");
     const adminDoc = await adminRef.get();
 
     if (!adminDoc.exists) {
