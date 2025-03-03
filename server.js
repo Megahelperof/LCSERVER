@@ -534,20 +534,29 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
 });
 
 app.post('/api/validate-token', async (req, res) => {
+  console.log('Received token validation request:', req.body);
+  
   const { token } = req.body;
-
   if (!token || token.length !== 4) {
-    return res.status(400).json({ valid: false });
+    console.log('Invalid token format:', token);
+    return res.status(400).json({ valid: false, error: 'Invalid token format' });
   }
-
+  
   const filePath = `Token/${token}.txt`;
-
+  console.log('Checking file path:', filePath);
+  
   try {
+    if (!bucket) {
+      console.error('Bucket not initialized');
+      return res.status(500).json({ valid: false, error: 'Storage not available' });
+    }
+    
     const [fileExists] = await bucket.file(filePath).exists();
+    console.log('File exists:', fileExists);
     return res.status(200).json({ valid: fileExists });
   } catch (error) {
     console.error('Error checking token:', error);
-    return res.status(500).json({ valid: false });
+    return res.status(500).json({ valid: false, error: error.message });
   }
 });
 
