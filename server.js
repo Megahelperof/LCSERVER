@@ -506,7 +506,7 @@ app.post('/api/logEntrance', async (req, res) => {
   }
 
   try {
-    const studentDocRef = db.collection('students').doc(studentNumber);
+    const studentDocRef = app.locals.db.collection('students').doc(studentNumber);
     const studentDoc = await studentDocRef.get();
 
     if (!studentDoc.exists) {
