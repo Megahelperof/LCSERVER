@@ -967,8 +967,8 @@ app.post('/api/createStudentFolder', async (req, res) => {
 
     const file = app.locals.bucket.file(`${folderPath}${fileName}`);
 
-    // 🔹 Check Firebase Storage write permissions
-    await bucket.file("test_write.txt").save("Test Content", {
+    // 🔹 Check Firebase Storage write permissions (CORRECTED)
+    await app.locals.bucket.file("test_write.txt").save("Test Content", {
       metadata: { contentType: "text/plain" },
     });
     console.log("✅ Firebase Storage Write Test Passed");
