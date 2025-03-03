@@ -8,6 +8,20 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 const app = express();
+const { Storage } = require('@google-cloud/storage');
+
+// Initialize storage
+let bucket;
+try {
+  // Create a storage client
+  const storage = new Storage();
+  // Set your bucket name
+  const bucketName = 'lcccdb-891ca.appspot.com'; // Replace with your actual bucket name
+  bucket = storage.bucket(bucketName);
+  console.log('Storage bucket initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize storage bucket:', error);
+}
 
 // const app = express(); // Duplicate declaration removed
 app.use(express.json()); // Parse JSON request bodies
@@ -534,25 +548,22 @@ app.get('/api/debugStudent/:studentNumber', async (req, res) => {
 });
 
 app.post('/api/validate-token', async (req, res) => {
-  console.log('Received token validation request:', req.body);
-  
   const { token } = req.body;
+  console.log('Received token validation request for:', token);
+  
   if (!token || token.length !== 4) {
-    console.log('Invalid token format:', token);
     return res.status(400).json({ valid: false, error: 'Invalid token format' });
   }
   
-  const filePath = `Token/${token}.txt`;
-  console.log('Checking file path:', filePath);
+  if (!bucket) {
+    console.error('Storage bucket not initialized');
+    return res.status(500).json({ valid: false, error: 'Storage not available' });
+  }
   
+  const filePath = `Token/${token}.txt`;
   try {
-    if (!bucket) {
-      console.error('Bucket not initialized');
-      return res.status(500).json({ valid: false, error: 'Storage not available' });
-    }
-    
     const [fileExists] = await bucket.file(filePath).exists();
-    console.log('File exists:', fileExists);
+    console.log(`Token ${token} validation result:`, fileExists);
     return res.status(200).json({ valid: fileExists });
   } catch (error) {
     console.error('Error checking token:', error);
