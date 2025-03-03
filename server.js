@@ -252,37 +252,6 @@ function isLate(entryTime) {
   return time < startThreshold || time > lateThreshold;
 }
 
-// Helper function to get the folder path for a student
-function getStudentFolderPath(grade, section, studentNumber) {
-  return `students/${grade}/${section}/${studentNumber}/`;
-}
-
-function getStudentFolderPath(grade, section, studentNumber) {
-  try {
-    // Get section name from mapping
-    const sectionName = SECTION_MAP[grade]?.[section];
-    if (!sectionName) {
-      console.error("Invalid grade/section combination:", grade, section);
-      return null;
-    }
-
-    // Construct folder path
-    const folderPath = `students/${grade}/${sectionName}/${studentNumber}/`;
-    
-    // Verify folder exists in possibleFolders
-    if (!possibleFolders.includes(folderPath)) {
-      console.error("Invalid folder path configuration:", folderPath);
-      return null;
-    }
-
-    return folderPath;
-  } catch (error) {
-    console.error("Error in getStudentFolderPath:", error);
-    return null;
-  }
-}
-
-// Modified logStudentActivity function to use possibleFolders.json
 async function logStudentActivity(studentNumber, fullName, logViolations = false) {
   const activityTime = getPhilippineTime();
   const formattedActivityTime = activityTime.replace(/[^\w\s]/gi, '_');
@@ -966,6 +935,20 @@ const SECTION_MAP = {
   '10': {'A': 'Charism', 'B': 'Peace', 'C': 'Fortitude', 'D': 'Amity', 'E': 'Love'}
 };
 
+// Helper function to get the folder path for a student (maintain your original structure)
+function getStudentFolderPath(grade, section, studentNumber) {
+  // Construct folder path using your original pattern
+  const folderPath = `students/${grade}/${section}/${studentNumber}/`;
+  
+  // Validate against possible folders if needed
+  if (possibleFolders && !possibleFolders.includes(folderPath)) {
+    console.error("Invalid folder path configuration:", folderPath);
+    return null;
+  }
+  
+  return folderPath;
+}
+
 app.post('/api/createStudentFolder', async (req, res) => {
   const { studentNumber, fullName, grade, section } = req.body;
 
@@ -979,7 +962,7 @@ app.post('/api/createStudentFolder', async (req, res) => {
     if (!folderPath) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Invalid grade/section combination or folder configuration.' 
+        message: 'Invalid folder configuration.' 
       });
     }
 
