@@ -115,12 +115,9 @@ let lateTime = '07:10';
 
 // Utility functions
 function getPhilippineTime() {
-  // Create date object with Manila timezone offset
   const now = new Date();
-  const philippineOffset = +8 * 60; // UTC+8 in minutes
-  const localOffset = now.getTimezoneOffset();
-  const philippineTime = new Date(now.getTime() + (philippineOffset + localOffset) * 60000);
-  return philippineTime;
+  // Add 8 hours to UTC time
+  return new Date(now.getTime() + 8 * 60 * 60 * 1000);
 }
 
 function parseTime(timeString) {
@@ -846,7 +843,7 @@ app.post('/api/logViolation', async (req, res) => {
     let currentContent = '';
 
     if (fileExists) {
-      const [content] = await bucketapp.locals.bucket.file(filePath).download();
+      const [content] = await app.locals.bucket.file(filePath).download();
       currentContent = content.toString('utf-8');
     }
 
