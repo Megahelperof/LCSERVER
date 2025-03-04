@@ -664,7 +664,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
       }
 
        // Add this to the existing endpoint
-      const imagePath = `${studentFolder}${studentNumber}/${studentNumber}.png`;
+       const imagePath = `${studentFolder}${studentNumber}/${studentNumber}.png`.replace(/\/\//g, '/');
       const [imageExists] = await bucket.file(imagePath).exists();
 
       let imageUrl = '';
