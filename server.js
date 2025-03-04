@@ -674,7 +674,20 @@ app.post('/api/getStudentInfo', async (req, res) => {
               expires: Date.now() + 15 * 60 * 1000 // 15 minutes
           });
           imageUrl = url;
-      }
+    console.log(`Successfully retrieved image URL: ${imageUrl}`);
+    } else {
+        console.log('Image file not found');
+    }
+
+    const img = new Image();
+img.src = imageUrl;
+img.onload = () => {
+    console.log('Image loaded successfully');
+};
+img.onerror = () => {
+    console.log('Error loading image:', imageUrl);
+};
+    
       // Get notices
       const [noticeFiles] = await bucket.getFiles({
           prefix: `notice/${studentNumber}notice_`
