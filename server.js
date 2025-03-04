@@ -678,15 +678,6 @@ app.post('/api/getStudentInfo', async (req, res) => {
     } else {
         console.log('Image file not found');
     }
-
-    const img = new Image();
-img.src = imageUrl;
-img.onload = () => {
-    console.log('Image loaded successfully');
-};
-img.onerror = () => {
-    console.log('Error loading image:', imageUrl);
-};
     
       // Get notices
       const [noticeFiles] = await bucket.getFiles({
