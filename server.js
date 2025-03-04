@@ -596,130 +596,121 @@ async function writeStudentData(data) {
 
 app.post('/api/getStudentInfo', async (req, res) => {
   try {
-    const { query } = req.body;
-    const db = admin.firestore(); // Get a reference to Firestore directly
-    const bucket = admin.storage().bucket(); // Get a reference to storage bucket directly
+      const { query } = req.body;
+      const db = app.locals.db; // Get a reference to Firestore directly from app.locals
+      const bucket = app.locals.bucket; // Get a reference to storage bucket directly from app.locals
 
-    let studentDoc = null;
-    let studentNumber = null;
-    let studentFolder = null;
-    const cleanedQuery = query.replace(/-/g, '');
+      let studentDoc = null;
+      let studentNumber = null;
+      let studentFolder = null;
+      const cleanedQuery = query.replace(/-/g, '');
 
-    if (!isNaN(cleanedQuery)) {
-      studentDoc = await app.locals.db.collection('students').doc(query).get();
-      if (studentDoc.exists) studentNumber = query;
-    } else {
-      const snapshot = await app.locals.db.collection('students')
-        .where('fullName', '==', query)
-        .limit(1)
-        .get();
-
-      if (!snapshot.empty) {
-        studentDoc = snapshot.docs[0];
-        studentNumber = studentDoc.id;
+      if (!isNaN(cleanedQuery)) {
+          studentDoc = await db.collection('students').doc(query).get();
+          if (studentDoc.exists) studentNumber = query;
       } else {
-        for (const folder of folderPaths.possibleFolders) {
-          const [files] = await bucket.getFiles({ prefix: folder });
-          for (const file of files) {
-            if (file.name.endsWith('_main.txt')) {
-              const [content] = await file.download();
-              const fileContent = content.toString('utf-8');
-              const lines = fileContent.split("\n");
-              let foundName = "", foundNumber = "";
+          const snapshot = await db.collection('students')
+              .where('fullName', '==', query)
+              .limit(1)
+              .get();
 
-              for (const line of lines) {
-                if (line.startsWith("Full Name:")) foundName = line.split(":")[1].trim();
-                if (line.startsWith("Student Number:")) foundNumber = line.split(":")[1].trim();
-              }
+          if (!snapshot.empty) {
+              studentDoc = snapshot.docs[0];
+              studentNumber = studentDoc.id;
+          } else {
+              for (const folder of folderPaths.possibleFolders) {
+                  const [files] = await bucket.getFiles({ prefix: folder });
+                  for (const file of files) {
+                      if (file.name.endsWith('_main.txt')) {
+                          const [content] = await file.download();
+                          const fileContent = content.toString('utf-8');
+                          const lines = fileContent.split("\n");
+                          let foundName = "", foundNumber = "";
 
-              if (foundName.toLowerCase() === query.toLowerCase()) {
-                studentNumber = foundNumber;
-                studentFolder = folder;
-                break;
+                          for (const line of lines) {
+                              if (line.startsWith("Full Name:")) foundName = line.split(":")[1].trim();
+                              if (line.startsWith("Student Number:")) foundNumber = line.split(":")[1].trim();
+                          }
+
+                          if (foundName.toLowerCase() === query.toLowerCase()) {
+                              studentNumber = foundNumber;
+                              studentFolder = folder;
+                              break;
+                          }
+                      }
+                  }
+                  if (studentNumber) break;
               }
-            }
+              if (studentNumber) studentDoc = await db.collection('students').doc(studentNumber).get();
           }
-          if (studentNumber) break;
-        }
-        if (studentNumber) studentDoc = await app.locals.db.collection('students').doc(studentNumber).get();
       }
-    }
 
-    if (!studentDoc?.exists) return res.json({ success: false, message: 'Student not found' });
+      if (!studentDoc?.exists) return res.json({ success: false, message: 'Student not found' });
 
-    const studentData = studentDoc.data();
-    let lastViolations = 'None';
-    let noticeDetails = 'No additional details';
+      const studentData = studentDoc.data();
+      let lastViolations = 'None';
+      let noticeDetails = 'No additional details';
 
-    // Get violations
-    if (studentFolder) {
-      const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
-      const [violationExists] = await app.locals.bucket.file(violationPath).exists();
-      
-      if (violationExists) {
-        const [content] = await app.locals.bucket.file(violationPath).download();
-        const violations = content.toString('utf-8').split('\n').filter(Boolean);
-        lastViolations = violations.length ? violations[violations.length - 1] : 'None';
+      // Get violations
+      if (studentFolder) {
+          const violationPath = `${studentFolder}${studentNumber}/${studentNumber}_violations.txt`;
+          const [violationExists] = await bucket.file(violationPath).exists();
+
+          if (violationExists) {
+              const [content] = await bucket.file(violationPath).download();
+              const violations = content.toString('utf-8').split('\n').filter(Boolean);
+              lastViolations = violations.length ? violations[violations.length - 1] : 'None';
+          }
       }
-    }
 
-    // Add this to the existing endpoint
-const imagePath = `${studentFolder}${studentNumber}/${studentNumber}.png`;
-const [imageExists] = await bucket.file(imagePath).exists();
+       // Add this to the existing endpoint
+      const imagePath = `${studentFolder}${studentNumber}/${studentNumber}.png`;
+      const [imageExists] = await bucket.file(imagePath).exists();
 
-let imageUrl = '';
-if (imageExists) {
-    const [url] = await bucket.file(imagePath).getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 15 * 60 * 1000 // 15 minutes
-    });
-    imageUrl = url;
-}
-
-res.json({
-    success: true,
-    studentInfo: {
-        ...existingData,
-        imageUrl
-    }
-});
-
-    // Get notices
-    const [noticeFiles] = await app.locals.bucket.getFiles({
-      prefix: `notice/${studentNumber}notice_`
-    });
-
-    if (noticeFiles.length > 0) {
-      // Sort by most recent first
-      const sortedNotices = noticeFiles.sort((a, b) => 
-        b.metadata.updated.localeCompare(a.metadata.updated)
-      );
-      
-      try {
-        const [latestNotice] = await sortedNotices[0].download();
-        noticeDetails = latestNotice.toString('utf-8');
-      } catch (error) {
-        console.error('Error loading notice:', error);
+      let imageUrl = '';
+      if (imageExists) {
+          const [url] = await bucket.file(imagePath).getSignedUrl({
+              action: 'read',
+              expires: Date.now() + 15 * 60 * 1000 // 15 minutes
+          });
+          imageUrl = url;
       }
-    }
+      // Get notices
+      const [noticeFiles] = await bucket.getFiles({
+          prefix: `notice/${studentNumber}notice_`
+      });
 
-    res.json({
-      success: true,
-      studentInfo: {
-        studentNumber,
-        fullName: studentData.fullName,
-        grade: studentData.grade,
-        section: studentData.section,
-        lastViolations,
-        details: noticeDetails
+      if (noticeFiles.length > 0) {
+          // Sort by most recent first
+          const sortedNotices = noticeFiles.sort((a, b) =>
+              b.metadata.updated.localeCompare(a.metadata.updated)
+          );
+
+          try {
+              const [latestNotice] = await sortedNotices[0].download();
+              noticeDetails = latestNotice.toString('utf-8');
+          } catch (error) {
+              console.error('Error loading notice:', error);
+          }
       }
-    });
+
+      res.json({
+          success: true,
+          studentInfo: {
+              studentNumber,
+              fullName: studentData.fullName,
+              grade: studentData.grade,
+              section: studentData.section,
+              lastViolations,
+              details: noticeDetails,
+              imageUrl: imageUrl
+          }
+      });
   } catch (error) {
-    console.error('Error fetching student info:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+      console.error('Error fetching student info:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
 // Assuming Firebase Admin SDK is already initialized
 
 app.post('/admin/submitNotice', async (req, res) => {
