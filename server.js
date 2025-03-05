@@ -665,11 +665,11 @@ app.post('/api/getStudentInfo', async (req, res) => {
 
        // Add this to the existing endpoint
        const imagePath = `${studentFolder}${studentNumber}/${studentNumber}.png`.replace(/\/\//g, '/');
-      const [imageExists] = await bucket.file(imagePath).exists();
+      const [imageExists] = await app.locals.bucket.file(imagePath).exists();
 
       let imageUrl = '';
       if (imageExists) {
-          const [url] = await bucket.file(imagePath).getSignedUrl({
+          const [url] = await app.locals.bucketbucket.file(imagePath).getSignedUrl({
               action: 'read',
               expires: Date.now() + 15 * 60 * 1000 // 15 minutes
           });
