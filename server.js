@@ -669,7 +669,7 @@ app.post('/api/getStudentInfo', async (req, res) => {
 
       let imageUrl = '';
       if (imageExists) {
-          const [url] = await app.locals.bucketbucket.file(imagePath).getSignedUrl({
+          const [url] = await app.locals.bucket.file(imagePath).getSignedUrl({
               action: 'read',
               expires: Date.now() + 15 * 60 * 1000 // 15 minutes
           });
