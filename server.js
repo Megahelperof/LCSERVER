@@ -26,7 +26,7 @@ try {
 
 app.use(express.json()); // Parse JSON request bodies
 app.use(cors({
-  origin: 'http://127.0.0.1:5000', // Allow requests from your frontend
+  origin: "https://lcccdb-891ca.web.app", // Allow requests from your frontend
   methods: 'GET,POST,PUT,DELETE,OPTIONS',
   allowedHeaders: 'Content-Type, Authorization'
 }));
